@@ -679,8 +679,8 @@
         </div>
     </div>
     <div class="toast" id="toast"><span>✅</span><span id="toastText">操作成功</span></div>
-
     <script>
+
         const API = window.location.origin;
         let authToken = localStorage.getItem('iot_token');
         let currentUser = null;
@@ -1110,6 +1110,7 @@
             const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = s.sceneName + '.doc'; a.click(); URL.revokeObjectURL(a.href);
             showToast('Word文档已导出！');
         }
+    
     </script>
 </body>
 </html>
