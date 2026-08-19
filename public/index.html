@@ -798,8 +798,9 @@
 
         // 资料库
         function initKbUpload() {
-            const zone = document.getElementById('kbUploadZone');
             const input = document.getElementById('kbFileInput');
+            const zone = document.getElementById('kbUploadZone');
+            if (!input || !zone) return;
             input.addEventListener('change', e => handleLocalFiles(e.target.files));
             zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('dragover'); });
             zone.addEventListener('dragleave', () => zone.classList.remove('dragover'));
