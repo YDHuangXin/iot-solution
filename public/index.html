@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI智能物联网方案生成器 v2.0</title>
+    <title>AI智能物联网方案生成器 v3.0</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         :root {
@@ -49,7 +49,7 @@
             color: var(--danger); transition: all 0.3s;
         }
         .btn-logout:hover { background: var(--danger); color: white; }
-        .auth-page { position: relative; z-index: 10; display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+        .auth-page { position: relative; z-index: 2; display: flex; align-items: center; justify-content: center; min-height: 100vh; }
         .auth-card {
             background: var(--bg-card); border: 1px solid var(--border); border-radius: 20px;
             padding: 40px; width: 100%; max-width: 420px; animation: fadeIn 0.5s ease;
@@ -393,11 +393,11 @@
     </style>
 </head>
 <body>
-    <!-- 认证页面 -->
+<!-- 认证页面 -->
     <div class="auth-page" id="authPage">
         <div class="auth-card">
             <h2>🌐 IoT 方案生成器</h2>
-            <p class="subtitle">AI智能物联网产品方案生成器 v2.0</p>
+            <p class="subtitle">AI智能物联网产品方案生成器 v3.0 · 联网搜索版</p>
             <div class="auth-tabs">
                 <button class="auth-tab active" onclick="switchAuthTab('login')">登录</button>
                 <button class="auth-tab" onclick="switchAuthTab('register')">注册</button>
@@ -436,7 +436,7 @@
         </div>
     </div>
     <!-- 主应用 -->
-    <div id="mainApp" style="display:none; position:relative; z-index:10">
+    <div id="mainApp" style="display:none; position: relative; z-index: 2">
         <div class="container">
             <div class="top-nav">
                 <div class="logo">🌐 IoT 方案生成器</div>
@@ -504,6 +504,14 @@
                                 </select>
                             </div>
                             <div class="form-group">
+                                <label class="form-label">方案复杂度</label>
+                                <div class="scene-tags" id="complexityTags">
+                                    <div class="scene-tag" data-level="simple">📝 简单方案</div>
+                                    <div class="scene-tag active" data-level="medium">📋 中等方案</div>
+                                    <div class="scene-tag" data-level="complex">📚 复杂方案</div>
+                                </div>
+                            </div>
+                            <div class="form-group">
                                 <label class="form-label">补充需求描述</label>
                                 <textarea class="form-textarea" id="description" placeholder="请描述您的具体需求..."></textarea>
                             </div>
@@ -539,12 +547,23 @@
                         <div class="solution-result" id="solutionResult">
                             <div class="solution-header">
                                 <h2 id="solutionTitle">📄 方案</h2>
+                                <div id="dataSourceBadge" style="display:none;font-size:0.75rem;padding:4px 10px;border-radius:6px;background:rgba(16,185,129,0.15);border:1px solid rgba(16,185,129,0.3);color:#10b981;">🔍 联网搜索已启用</div>
                                 <div class="solution-actions">
                                     <button class="btn-action" onclick="toggleCompare()">📊 版本对比</button>
                                     <button class="btn-action" onclick="openEditModal()">✏️ 修改</button>
                                     <button class="btn-action primary" onclick="exportWord()">📥 导出Word</button>
                                 </div>
                             </div>
+                            <div class="solution-version-tabs" id="versionTabs" style="display:flex;gap:4px;margin-bottom:12px;background:rgba(15,23,42,0.5);border-radius:10px;padding:4px;width:fit-content;">
+                                <button class="solution-version-tab active" data-version="0" onclick="switchVersion(0)">📝 简单方案</button>
+                                <button class="solution-version-tab" data-version="1" onclick="switchVersion(1)">📋 中等方案</button>
+                                <button class="solution-version-tab" data-version="2" onclick="switchVersion(2)">📚 复杂方案</button>
+                            </div>
+                            <style>
+                                .solution-version-tab { padding:8px 16px;border-radius:8px;font-size:0.82rem;font-weight:600;cursor:pointer;border:none;background:transparent;color:var(--text-muted);transition:all 0.3s; }
+                                .solution-version-tab:hover { color:var(--text); }
+                                .solution-version-tab.active { background:var(--primary);color:white; }
+                            </style>
                             <div class="solution-tabs" id="solutionTabs">
                                 <button class="solution-tab active" data-tab="overview">📋 概览</button>
                                 <button class="solution-tab" data-tab="hardware">🔧 硬件</button>
@@ -668,29 +687,23 @@
     </div>
     <div class="toast" id="toast"><span>✅</span><span id="toastText">操作成功</span></div>
     <script>
-
-        const API = window.location.origin;
+const API = window.location.origin;
         let authToken = localStorage.getItem('iot_token');
         let currentUser = null;
         let currentScene = 'smart-industry';
+        let currentComplexity = 'medium'; // simple | medium | complex
         let currentSolution = null;
-        let solutionVersions = [];
+        let currentVersion = 0; // 0=simple, 1=medium, 2=complex
+        let solutionVersions = []; // [{simple, medium, complex}, ...]
+        let sceneDataCache = {}; // 缓存场景数据
         let kbFiles = [];
         let kbPage = 1;
         let historyPage = 1;
-
-        const sceneData = {
-            'smart-industry': { name: '智慧工业物联网方案', icon: '🏭', sensors: ['温湿度传感器','烟雾探测器','振动传感器','电流互感器','气压传感器'], gateway: '工业级边缘网关', protocols: ['Modbus','OPC-UA','MQTT'], platform: 'OneNET工业物联网平台', features: ['设备实时监控','预测性维护','能耗管理','产线数字孪生','异常告警'], desc: '面向工业制造场景，实现设备互联、生产数据实时采集、智能分析与预测性维护。' },
-            'smart-agriculture': { name: '智慧农业物联网方案', icon: '🌾', sensors: ['土壤湿度传感器','光照传感器','CO₂传感器','气象站','水质监测仪'], gateway: '农业专用LoRa网关', protocols: ['LoRaWAN','NB-IoT','MQTT'], platform: 'OneNET智慧农业平台', features: ['精准灌溉控制','环境智能调控','作物生长监测','病虫害预警','产量预测分析'], desc: '面向现代农业生产，通过传感器网络实时监测土壤、气象、作物状态。' },
-            'smart-home': { name: '智能家居物联网方案', icon: '🏠', sensors: ['人体红外传感器','门窗磁传感器','温湿度传感器','光照传感器','空气质量传感器'], gateway: '智能家庭中枢网关', protocols: ['ZigBee 3.0','WiFi 6','蓝牙Mesh'], platform: '移动智能家居云平台', features: ['场景自动化','语音控制','远程安防','能耗优化','健康环境管理'], desc: '打造全屋智能生活体验，通过多协议融合实现设备互联互通。' },
-            'security': { name: '智能安防监测方案', icon: '🔒', sensors: ['高清AI摄像头','红外对射探测器','振动光纤','门禁控制器','紧急按钮'], gateway: '安防专用汇聚网关', protocols: ['TCP/IP','RS485','GB/T28181'], platform: '视频云+AI分析平台', features: ['AI视频分析','周界防范','人脸门禁','消防联动','应急指挥'], desc: '构建全方位立体安防体系，融合视频AI、物联传感与联动控制。' },
-            'smart-city': { name: '智慧城市物联网方案', icon: '🏙️', sensors: ['环境监测站','智能路灯控制器','井盖传感器','水位监测仪','噪声传感器'], gateway: '城市级NB-IoT基站', protocols: ['NB-IoT','5G','LoRaWAN'], platform: '城市物联网运营管理平台', features: ['城市体征监测','智慧照明','管网监测','环境监测','应急调度'], desc: '建设城市级物联感知网络，汇聚市政、环境、交通等多维数据。' },
-            'smart-logistics': { name: '智慧物流物联网方案', icon: '📦', sensors: ['GPS定位器','温湿度记录仪','电子锁','RFID读写器','重量传感器'], gateway: '物流边缘计算网关', protocols: ['4G/5G','BLE','RFID/UHF'], platform: '物流链可视化管理平台', features: ['全程冷链监控','仓储自动化','路径优化','电子围栏','签收确认'], desc: '实现物流全链路数字化管控，从仓储到配送全程可追溯。' }
-        };
         const fileIconMap = { pdf:'📕', doc:'📘', docx:'📘', txt:'📄', xlsx:'📗', csv:'📊', json:'📋', md:'📝' };
 
         document.addEventListener('DOMContentLoaded', () => {
             try { initSceneTags(); } catch(e) { console.error('initSceneTags failed:', e); }
+            try { initComplexityTags(); } catch(e) { console.error('initComplexityTags failed:', e); }
             try { initRangeSliders(); } catch(e) { console.error('initRangeSliders failed:', e); }
             try { initTabs(); } catch(e) { console.error('initTabs failed:', e); }
             try { initKbUpload(); } catch(e) { console.error('initKbUpload failed:', e); }
@@ -698,10 +711,18 @@
         });
 
         function initSceneTags() {
-            document.querySelectorAll('.scene-tag').forEach(tag => {
+            document.querySelectorAll('#sceneTags .scene-tag').forEach(tag => {
                 tag.addEventListener('click', () => {
-                    document.querySelectorAll('.scene-tag').forEach(t => t.classList.remove('active'));
+                    document.querySelectorAll('#sceneTags .scene-tag').forEach(t => t.classList.remove('active'));
                     tag.classList.add('active'); currentScene = tag.dataset.scene;
+                });
+            });
+        }
+        function initComplexityTags() {
+            document.querySelectorAll('#complexityTags .scene-tag').forEach(tag => {
+                tag.addEventListener('click', () => {
+                    document.querySelectorAll('#complexityTags .scene-tag').forEach(t => t.classList.remove('active'));
+                    tag.classList.add('active'); currentComplexity = tag.dataset.level;
                 });
             });
         }
@@ -847,8 +868,6 @@
             const allTags = [...new Set(kbFiles.flatMap(f => f.tags||[]))];
             document.getElementById('kbTagList').innerHTML = allTags.map(t => `<span class="kb-tag">${t}</span>`).join('');
         }
-
-        // 服务器上传
         async function uploadToServer(fileList) {
             if (!fileList.length) return;
             for (const file of fileList) {
@@ -862,8 +881,6 @@
             }
             loadKnowledge();
         }
-
-        // 资料库管理
         async function loadKnowledge() {
             const search = document.getElementById('kbSearchInput').value.trim();
             const tag = document.getElementById('kbTagFilter').value;
@@ -883,7 +900,7 @@
         function renderKbTable(files, total) {
             const tbody = document.getElementById('kbManageTableBody');
             if (!files.length) { tbody.innerHTML = '<tr><td colspan="6" class="kb-empty-state"><div class="empty-icon">📂</div><p>暂无资料</p></td></tr>'; return; }
-            tbody.innerHTML = files.map(f => `<tr><td><strong>${fileIconMap[f.type]||'📄'} ${f.name}</strong></td><td>${f.type.toUpperCase()}</td><td>${formatSize(f.size)}</td><td>${(f.tags||[]).map(t => `<span class="kb-tag">${t}</span>`).join(' ')}</td><td>${new Date(f.created_at).toLocaleString('zh-CN')}</td><td><button class="hc-btn danger" onclick="deleteKbFile(${f.id})">删除</button></td></tr>`).join('');
+            tbody.innerHTML = files.map(f => `<tr><td><strong>${fileIconMap[f.type]||'📄'} ${f.name}</strong></td><td>${f.type.toUpperCase()}</td><td>${formatSize(f.size)}</td><td>${(f.tags||[]).map(t => `<span class="kb-tag">${t}</span>`).join(' ')}</td><td>${new Date(f.created_at).toLocaleString('zh-CN')}</td><td><button class="hc-btn danger" onclick="deleteKbFile('${f.id}')">删除</button></td></tr>`).join('');
         }
         function renderKbPagination(total) {
             const pages = Math.ceil(total / 10); const el = document.getElementById('kbPagination');
@@ -910,7 +927,10 @@
         function renderHistoryGrid(solutions) {
             const grid = document.getElementById('historyGrid');
             if (!solutions.length) { grid.innerHTML = '<div class="kb-empty-state"><div class="empty-icon">📁</div><p>暂无历史方案，快去生成第一个方案吧！</p></div>'; return; }
-            grid.innerHTML = solutions.map(s => `<div class="history-card" onclick="viewSolution('${s.id}')"><div class="hc-header"><span class="hc-icon">${sceneData[s.scene]?.icon||'📄'}</span><span class="hc-title">${s.title}</span></div><div class="hc-meta"><span class="hc-tag">预算¥${s.budget}万</span><span class="hc-tag">${s.device_count}台设备</span><span class="hc-tag">v${s.version}</span></div><div class="hc-footer"><span class="hc-date">${new Date(s.created_at).toLocaleString('zh-CN')}</span><div class="hc-actions"><button class="hc-btn" onclick="event.stopPropagation();viewSolution('${s.id}')">查看</button><button class="hc-btn danger" onclick="event.stopPropagation();deleteSolution('${s.id}')">删除</button></div></div></div>`).join('');
+            grid.innerHTML = solutions.map(s => {
+                const icons = {'smart-industry':'🏭','smart-agriculture':'🌾','smart-home':'🏠','security':'🔒','smart-city':'🏙️','smart-logistics':'📦'};
+                return `<div class="history-card" onclick="viewSolution('${s.id}')"><div class="hc-header"><span class="hc-icon">${icons[s.scene]||'📄'}</span><span class="hc-title">${s.title}</span></div><div class="hc-meta"><span class="hc-tag">预算¥${s.budget}万</span><span class="hc-tag">${s.device_count}台设备</span><span class="hc-tag">v${s.version}</span></div><div class="hc-footer"><span class="hc-date">${new Date(s.created_at).toLocaleString('zh-CN')}</span><div class="hc-actions"><button class="hc-btn" onclick="event.stopPropagation();viewSolution('${s.id}')">查看</button><button class="hc-btn danger" onclick="event.stopPropagation();deleteSolution('${s.id}')">删除</button></div></div></div>`;
+            }).join('');
         }
         function renderHistoryPagination(total) {
             const pages = Math.ceil(total / 12); const el = document.getElementById('historyPagination');
@@ -930,45 +950,157 @@
             try { await fetch(API + '/api/solutions/' + id, { method: 'DELETE', headers: { 'Authorization': 'Bearer '+authToken } }); showToast('已删除'); loadHistory(); } catch { showToast('删除失败'); }
         }
 
-        // 方案生成
-        async function generateSolution() {
-            const btn = document.getElementById('btnGenerate'); btn.classList.add('loading'); showLoading();
-            const steps = [
-                '正在解析需求特征...',
-                kbFiles.length > 0 ? `正在学习 ${kbFiles.length} 份参考资料...` : '匹配行业方案知识库...',
-                '执行硬件选型算法...', '计算网络拓扑最优解...', '生成云平台架构...',
-                '核算成本预算...', '评估风险与优化建议...', '方案生成完成！'
-            ];
-            for (let i = 0; i < steps.length; i++) { await sleep(400); document.getElementById('loadingSub').textContent = steps[i]; }
-            await sleep(300); hideLoading();
-            const solution = buildSolution(); currentSolution = solution;
-            solutionVersions.push({ ...solution, version: solutionVersions.length + 1 });
-            renderSolution(solution);
-            try {
-                await fetch(API + '/api/solutions', {
-                    method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer '+authToken },
-                    body: JSON.stringify({ title: solution.sceneName, scene: currentScene, budget: solution.budget, device_count: solution.devices, communication: solution.communication, cloud_platform: solution.cloud, description: solution.description, content: solution, kb_file_ids: kbFiles.map(f => f.name), version: solutionVersions.length })
-                });
-            } catch {}
-            btn.classList.remove('loading'); showToast('方案生成成功！已自动保存');
-        }
+        // ========== 方案生成（核心改造：联网搜索 + 三档方案） ==========
 
-        function buildSolution() {
-            const scene = sceneData[currentScene];
+        async function generateSolution() {
+            const btn = document.getElementById('btnGenerate');
+            btn.classList.add('loading');
+            showLoading();
+
+            const desc = document.getElementById('description').value;
             const budget = parseInt(document.getElementById('budget').value);
             const devices = parseInt(document.getElementById('devices').value);
+
+            // 步骤1：联网搜索场景数据
+            const sceneData = await fetchSceneData(currentScene, desc);
+
+            const steps = [
+                '正在解析需求特征...',
+                kbFiles.length > 0 ? `正在学习 ${kbFiles.length} 份参考资料...` : '正在从互联网搜索行业方案数据...',
+                '执行硬件选型算法...', '计算网络拓扑最优解...', '生成云平台架构...',
+                '核算成本预算...', '评估风险与优化建议...', '生成三档方案...', '方案生成完成！'
+            ];
+            for (let i = 0; i < steps.length; i++) { await sleep(500); document.getElementById('loadingSub').textContent = steps[i]; }
+            await sleep(300);
+            hideLoading();
+
+            // 步骤2：生成三档方案
+            const simple = buildSolution(sceneData, budget, devices, 'simple');
+            const medium = buildSolution(sceneData, budget, devices, 'medium');
+            const complex = buildSolution(sceneData, budget, devices, 'complex');
+
+            const versionGroup = { simple, medium, complex };
+            solutionVersions.push(versionGroup);
+            currentVersion = currentComplexity === 'simple' ? 0 : currentComplexity === 'medium' ? 1 : 2;
+
+            // 步骤3：显示
+            currentSolution = versionGroup[currentVersion === 0 ? 'simple' : currentVersion === 1 ? 'medium' : 'complex'];
+            renderSolution(currentSolution);
+
+            // 显示数据来源 badge
+            if (sceneData.searchSuccess) {
+                document.getElementById('dataSourceBadge').style.display = 'inline-flex';
+            } else {
+                document.getElementById('dataSourceBadge').style.display = 'none';
+            }
+
+            // 步骤4：保存到服务器
+            try {
+                await fetch(API + '/api/solutions', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer '+authToken },
+                    body: JSON.stringify({
+                        title: sceneData.name,
+                        scene: currentScene,
+                        budget: budget,
+                        device_count: devices,
+                        communication: document.getElementById('communication').value,
+                        cloud_platform: document.getElementById('cloudPlatform').value,
+                        description: desc,
+                        content: currentSolution,
+                        kb_file_ids: kbFiles.map(f => f.name),
+                        version: solutionVersions.length
+                    })
+                });
+            } catch {}
+
+            btn.classList.remove('loading');
+            showToast('三档方案生成成功！可在上方切换查看');
+        }
+
+        // 从后端获取场景数据（联网搜索 + 资料库）
+        async function fetchSceneData(scene, desc) {
+            // 先查缓存
+            if (sceneDataCache[scene]) return sceneDataCache[scene];
+
+            const kbIds = kbFiles.length > 0 ? kbFiles.map(f => f.id || f.name) : [];
+            try {
+                const r = await fetch(API + '/api/generate/scene-data', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer '+authToken },
+                    body: JSON.stringify({ scene, kbFileIds: kbIds, description: desc })
+                });
+                if (r.ok) {
+                    const data = await r.json();
+                    if (data.success && data.data) {
+                        sceneDataCache[scene] = data.data;
+                        return data.data;
+                    }
+                }
+            } catch (e) { console.log('API 获取场景数据失败，使用本地默认:', e.message); }
+
+            // 降级：使用本地默认数据
+            return getDefaultSceneData(scene);
+        }
+
+        function getDefaultSceneData(scene) {
+            const defaults = {
+                'smart-industry': { name:'智慧工业物联网方案', icon:'🏭', sensors:['温湿度传感器','烟雾探测器','振动传感器','电流互感器','气压传感器'], gateway:'工业级边缘网关', protocols:['Modbus','OPC-UA','MQTT'], platform:'OneNET工业物联网平台', features:['设备实时监控','预测性维护','能耗管理','产线数字孪生','异常告警'], desc:'面向工业制造场景，实现设备互联、生产数据实时采集、智能分析与预测性维护。' },
+                'smart-agriculture': { name:'智慧农业物联网方案', icon:'🌾', sensors:['土壤湿度传感器','光照传感器','CO₂传感器','气象站','水质监测仪'], gateway:'农业专用LoRa网关', protocols:['LoRaWAN','NB-IoT','MQTT'], platform:'OneNET智慧农业平台', features:['精准灌溉控制','环境智能调控','作物生长监测','病虫害预警','产量预测分析'], desc:'面向现代农业生产，通过传感器网络实时监测土壤、气象、作物状态。' },
+                'smart-home': { name:'智能家居物联网方案', icon:'🏠', sensors:['人体红外传感器','门窗磁传感器','温湿度传感器','光照传感器','空气质量传感器'], gateway:'智能家庭中枢网关', protocols:['ZigBee 3.0','WiFi 6','蓝牙Mesh'], platform:'移动智能家居云平台', features:['场景自动化','语音控制','远程安防','能耗优化','健康环境管理'], desc:'打造全屋智能生活体验，通过多协议融合实现设备互联互通。' },
+                'security': { name:'智能安防监测方案', icon:'🔒', sensors:['高清AI摄像头','红外对射探测器','振动光纤','门禁控制器','紧急按钮'], gateway:'安防专用汇聚网关', protocols:['TCP/IP','RS485','GB/T28181'], platform:'视频云+AI分析平台', features:['AI视频分析','周界防范','人脸门禁','消防联动','应急指挥'], desc:'构建全方位立体安防体系，融合视频AI、物联传感与联动控制。' },
+                'smart-city': { name:'智慧城市物联网方案', icon:'🏙️', sensors:['环境监测站','智能路灯控制器','井盖传感器','水位监测仪','噪声传感器'], gateway:'城市级NB-IoT基站', protocols:['NB-IoT','5G','LoRaWAN'], platform:'城市物联网运营管理平台', features:['城市体征监测','智慧照明','管网监测','环境监测','应急调度'], desc:'建设城市级物联感知网络，汇聚市政、环境、交通等多维数据。' },
+                'smart-logistics': { name:'智慧物流物联网方案', icon:'📦', sensors:['GPS定位器','温湿度记录仪','电子锁','RFID读写器','重量传感器'], gateway:'物流边缘计算网关', protocols:['4G/5G','BLE','RFID/UHF'], platform:'物流链可视化管理平台', features:['全程冷链监控','仓储自动化','路径优化','电子围栏','签收确认'], desc:'实现物流全链路数字化管控，从仓储到配送全程可追溯。' }
+            };
+            return defaults[scene] || defaults['smart-industry'];
+        }
+
+        function buildSolution(sceneData, budget, devices, level) {
             const comm = document.getElementById('communication').value;
             const cloud = document.getElementById('cloudPlatform').value;
             const desc = document.getElementById('description').value;
-            return { scene: currentScene, sceneName: scene.name, sceneIcon: scene.icon, budget, devices, communication: comm, cloud, description: desc, hardware: generateHardware(scene, devices, budget), cost: calculateCost(generateHardware(scene, devices, budget), budget), risks: generateRisks(), platform: scene.platform, features: scene.features, protocols: scene.protocols, desc: scene.desc, sensors: scene.sensors, gateway: scene.gateway, kbFiles: [...kbFiles], kbInsights: generateKbInsights() };
+            const hardware = generateHardware(sceneData, devices, budget);
+            const cost = calculateCost(hardware, budget);
+            const risks = generateRisks(level);
+            const kbInsights = generateKbInsights();
+
+            const base = {
+                scene: currentScene,
+                sceneName: sceneData.name,
+                sceneIcon: sceneData.icon,
+                budget, devices,
+                communication: comm,
+                cloud,
+                description: desc,
+                hardware, cost, risks,
+                platform: sceneData.platform,
+                features: sceneData.features,
+                protocols: sceneData.protocols,
+                desc: sceneData.desc,
+                sensors: sceneData.sensors,
+                gateway: sceneData.gateway,
+                kbFiles: [...kbFiles],
+                kbInsights,
+                dataFromSearch: sceneData.searchSuccess || false
+            };
+
+            // 根据复杂度增加内容
+            if (level === 'simple') {
+                return { ...base, level: '简单方案', levelIcon: '📝' };
+            } else if (level === 'medium') {
+                return { ...base, level: '中等方案', levelIcon: '📋', implementationSteps: generateImplementationSteps(sceneData), dataFlow: generateDataFlow(sceneData) };
+            } else {
+                return { ...base, level: '复杂方案', levelIcon: '📚', implementationSteps: generateImplementationSteps(sceneData), dataFlow: generateDataFlow(sceneData), platformModules: generatePlatformModules(sceneData), optimizationTips: generateOptimizationTips(), roiAnalysis: generateROIAnalysis(budget, devices) };
+            }
         }
-        function generateHardware(scene, devices, budget) {
+
+        function generateHardware(sceneData, devices, budget) {
             const bp = budget * 10000 / devices;
             return [
-                { type: '传感器', model: scene.sensors[0], params: '精度±0.5℃, IP67', price: Math.round(bp*0.15), qty: Math.ceil(devices*0.6) },
-                { type: '传感器', model: scene.sensors[1], params: '量程0-100%, 响应<2s', price: Math.round(bp*0.12), qty: Math.ceil(devices*0.4) },
-                { type: '传感器', model: scene.sensors[2]||scene.sensors[0], params: '工业级, 宽温-40~85℃', price: Math.round(bp*0.18), qty: Math.ceil(devices*0.3) },
-                { type: '网关', model: scene.gateway, params: '多协议, 边缘计算', price: Math.round(bp*2.5), qty: Math.ceil(devices/30) },
+                { type: '传感器', model: sceneData.sensors[0], params: '精度±0.5℃, IP67', price: Math.round(bp*0.15), qty: Math.ceil(devices*0.6) },
+                { type: '传感器', model: sceneData.sensors[1], params: '量程0-100%, 响应<2s', price: Math.round(bp*0.12), qty: Math.ceil(devices*0.4) },
+                { type: '传感器', model: sceneData.sensors[2]||sceneData.sensors[0], params: '工业级, 宽温-40~85℃', price: Math.round(bp*0.18), qty: Math.ceil(devices*0.3) },
+                { type: '网关', model: sceneData.gateway, params: '多协议, 边缘计算', price: Math.round(bp*2.5), qty: Math.ceil(devices/30) },
                 { type: '通信模组', model: '通信模组-' + (currentScene.includes('industry')?'5G':'NB-IoT'), params: '低功耗, 广覆盖', price: Math.round(bp*0.08), qty: devices },
                 { type: '供电模块', model: '太阳能+锂电池模组', params: '续航3年+, 免维护', price: Math.round(bp*0.1), qty: Math.ceil(devices*0.7) }
             ];
@@ -985,15 +1117,66 @@
                 { name:'运维服务', detail:'首年运维+技术支持+培训', amount: svc, percent: Math.round(svc/total*100) }
             ], total };
         }
-        function generateRisks() {
-            return [
+        function generateRisks(level) {
+            const base = [
                 { level:'high', title:'设备兼容性风险', desc:'不同厂商设备协议差异可能导致集成困难，建议提前进行POC验证。' },
                 { level:'high', title:'网络覆盖不足', desc:'部分部署区域可能存在信号盲区，需提前进行网络勘测。' },
                 { level:'medium', title:'数据安全风险', desc:'物联网数据传输存在被截获风险，建议采用TLS加密传输。' },
-                { level:'medium', title:'设备运维成本', desc:'大规模部署后设备维护成本可能超出预期，建议建立远程运维体系。' },
-                { level:'low', title:'平台扩展性', desc:'业务增长后平台需承载更多设备，建议选择弹性架构平台。' },
-                { level:'low', title:'供电可靠性', desc:'偏远地区设备供电不稳定，建议采用多路供电方案。' }
+                { level:'medium', title:'设备运维成本', desc:'大规模部署后设备维护成本可能超出预期，建议建立远程运维体系。' }
             ];
+            if (level === 'complex') {
+                base.push({ level:'low', title:'平台扩展性', desc:'业务增长后平台需承载更多设备，建议选择弹性架构平台。' });
+                base.push({ level:'low', title:'供电可靠性', desc:'偏远地区设备供电不稳定，建议采用多路供电方案。' });
+            }
+            return base;
+        }
+        function generateImplementationSteps(sceneData) {
+            return [
+                { phase: '第一阶段：需求调研', duration: '1-2周', tasks: ['现场勘察', '需求确认', '网络环境评估'] },
+                { phase: '第二阶段：方案设计', duration: '1周', tasks: ['设备选型', '网络拓扑设计', '平台对接方案'] },
+                { phase: '第三阶段：设备部署', duration: '2-4周', tasks: ['传感器安装', '网关部署', '通信联调'] },
+                { phase: '第四阶段：平台接入', duration: '1-2周', tasks: ['设备注册', '数据对接', '规则引擎配置'] },
+                { phase: '第五阶段：测试验收', duration: '1周', tasks: ['功能测试', '压力测试', '用户培训'] }
+            ];
+        }
+        function generateDataFlow(sceneData) {
+            return `1. 数据采集：${sceneData.sensors.slice(0,3).join('、')}等设备实时采集环境数据。
+2. 边缘处理：${sceneData.gateway}进行数据过滤、聚合、协议转换，支持本地决策。
+3. 数据传输：经${sceneData.protocols.join(' / ')}加密上传至云平台。
+4. 云端分析：${sceneData.platform}进行存储、分析、可视化，支持AI推理。
+5. 指令下发：平台生成控制指令，经边缘层下发至执行设备，实现闭环控制。`;
+        }
+        function generatePlatformModules(sceneData) {
+            return [
+                { name: '设备管理', desc: '设备注册、OTA升级、状态监控、远程配置' },
+                { name: '数据服务', desc: '实时流处理、历史查询、数据导出、API开放' },
+                { name: '规则引擎', desc: '可视化编排、告警触发、设备联动、自动化' },
+                { name: 'AI分析', desc: '异常检测、趋势预测、智能诊断、知识图谱' },
+                { name: '可视化', desc: 'GIS地图、实时看板、大屏展示、移动端适配' },
+                { name: '安全管理', desc: '设备证书、访问控制、审计日志、数据加密' }
+            ];
+        }
+        function generateOptimizationTips() {
+            return [
+                '分阶段部署：先小规模POC验证，再批量推广，降低项目风险。',
+                '标准化选型：优先选用支持标准协议（MQTT/CoAP）的设备，提高兼容性。',
+                '安全加固：启用TLS加密、固件签名验证、设备双向认证。',
+                '数据治理：建立数据分级分类制度，明确数据生命周期管理策略。',
+                '运维体系：建设统一运维管理平台，实现设备全生命周期管理。',
+                '容灾备份：关键数据异地备份，核心服务双活部署，保障业务连续性。',
+                '成本优化：利用边缘计算减少云端流量，按需订阅云服务降低固定成本。'
+            ];
+        }
+        function generateROIAnalysis(budget, devices) {
+            const annualSaving = Math.round(budget * 10000 * 0.25);
+            const paybackMonths = Math.round(budget * 10000 / (annualSaving / 12));
+            return {
+                annualSaving,
+                paybackMonths,
+                threeYearROI: Math.round((annualSaving * 3 - budget * 10000) / (budget * 10000) * 100),
+                efficiency: '+30-50%',
+                maintenance: '降低40%'
+            };
         }
         function generateKbInsights() {
             if (!kbFiles.length) return null;
@@ -1013,11 +1196,25 @@
         function hideLoading() { document.getElementById('loadingOverlay').classList.remove('active'); }
         function showToast(text) { const t = document.getElementById('toast'); document.getElementById('toastText').textContent = text; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 3000); }
 
+        // 方案版本切换
+        function switchVersion(idx) {
+            currentVersion = idx;
+            document.querySelectorAll('.solution-version-tab').forEach((tab, i) => {
+                tab.classList.toggle('active', i === idx);
+            });
+            if (solutionVersions.length > 0) {
+                const group = solutionVersions[solutionVersions.length - 1];
+                const keys = ['simple', 'medium', 'complex'];
+                currentSolution = group[keys[idx]];
+                renderSolution(currentSolution);
+            }
+        }
+
         // 渲染方案
         function renderSolution(s) {
             document.getElementById('placeholder').style.display = 'none';
             document.getElementById('solutionResult').classList.add('active');
-            document.getElementById('solutionTitle').textContent = s.sceneIcon + ' ' + s.sceneName;
+            document.getElementById('solutionTitle').textContent = s.sceneIcon + ' ' + s.sceneName + ' · ' + s.levelIcon + s.level;
             renderOverview(s); renderHardware(s.hardware); renderArchitecture(s); renderPlatform(s); renderCost(s.cost); renderRisks(s.risks); renderKnowledge(s.kbInsights); renderCompare();
         }
         function renderOverview(s) {
@@ -1029,6 +1226,7 @@
                 <div class="info-card"><div class="label">云平台</div><div class="value">${s.platform}</div></div>
                 <div class="info-card"><div class="label">核心功能</div><div class="value">${s.features.length} 项</div></div>`;
             let html = `<p>${s.desc}</p><br><p><strong>方案亮点：</strong></p><ul style="margin-top:8px;padding-left:20px;">${s.features.map(f=>`<li>${f}</li>`).join('')}</ul>`;
+            if (s.dataFromSearch) html += `<br><p style="color:var(--success);">🔍 本方案数据来源于互联网实时搜索 + 行业方案库</p>`;
             if (s.kbInsights?.customSuggestions?.length) html += `<br><p><strong>📚 资料库参考：</strong></p><ul style="margin-top:8px;padding-left:20px;">${s.kbInsights.customSuggestions.map(x=>`<li>${x}</li>`).join('')}</ul>`;
             document.getElementById('solutionSummary').innerHTML = html;
         }
@@ -1044,7 +1242,7 @@
                 <div class="arch-layer device">🔌 边缘层 — ${s.gateway}<div class="arch-nodes"><span class="arch-node">数据预处理</span><span class="arch-node">本地缓存</span><span class="arch-node">断网续传</span></div></div>
                 <div class="arch-arrow">↕️ 传感数据</div>
                 <div class="arch-layer sensor">📟 感知层<div class="arch-nodes">${s.sensors.map(x=>`<span class="arch-node">${x}</span>`).join('')}</div></div>`;
-            document.getElementById('dataFlow').innerHTML = `<p><strong>1. 数据采集</strong>：传感器实时采集数据上报至边缘网关。</p><p><strong>2. 边缘处理</strong>：${s.gateway}进行数据过滤、聚合、协议转换。</p><p><strong>3. 数据传输</strong>：经${getCommName(s.communication)}加密上传至云平台。</p><p><strong>4. 云端分析</strong>：${s.platform}进行存储、分析、可视化。</p><p><strong>5. 指令下发</strong>：平台生成控制指令实现闭环控制。</p>`;
+            document.getElementById('dataFlow').innerHTML = s.dataFlow ? s.dataFlow.split('\n').map(l => `<p>${l}</p>`).join('') : `<p><strong>1. 数据采集</strong>：传感器实时采集数据上报至边缘网关。</p><p><strong>2. 边缘处理</strong>：${s.gateway}进行数据过滤、聚合、协议转换。</p><p><strong>3. 数据传输</strong>：经${getCommName(s.communication)}加密上传至云平台。</p><p><strong>4. 云端分析</strong>：${s.platform}进行存储、分析、可视化。</p><p><strong>5. 指令下发</strong>：平台生成控制指令实现闭环控制。</p>`;
         }
         function renderPlatform(s) {
             document.getElementById('platformGrid').innerHTML = `
@@ -1054,7 +1252,11 @@
                 <div class="info-card"><div class="label">API接口</div><div class="value">RESTful + MQTT</div></div>
                 <div class="info-card"><div class="label">安全认证</div><div class="value">设备证书+Token</div></div>
                 <div class="info-card"><div class="label">可用性</div><div class="value">99.95% SLA</div></div>`;
-            document.getElementById('platformModules').innerHTML = `<p><strong>核心功能模块：</strong></p><ul style="margin-top:8px;padding-left:20px;line-height:2;"><li><strong>设备管理：</strong>注册、OTA升级、状态监控</li><li><strong>数据服务：</strong>实时流处理、历史查询、导出</li><li><strong>规则引擎：</strong>可视化编排、告警触发、联动</li><li><strong>AI分析：</strong>异常检测、趋势预测</li><li><strong>可视化大屏：</strong>GIS地图、实时看板</li><li><strong>开放能力：</strong>SDK/API、Webhook</li></ul>`;
+            if (s.platformModules && s.platformModules.length) {
+                document.getElementById('platformModules').innerHTML = s.platformModules.map(m => `<p><strong>${m.name}：</strong>${m.desc}</p>`).join('');
+            } else {
+                document.getElementById('platformModules').innerHTML = `<p><strong>核心功能模块：</strong></p><ul style="margin-top:8px;padding-left:20px;line-height:2;"><li><strong>设备管理：</strong>注册、OTA升级、状态监控</li><li><strong>数据服务：</strong>实时流处理、历史查询、导出</li><li><strong>规则引擎：</strong>可视化编排、告警触发、联动</li><li><strong>AI分析：</strong>异常检测、趋势预测</li><li><strong>可视化大屏：</strong>GIS地图、实时看板</li><li><strong>开放能力：</strong>SDK/API、Webhook</li></ul>`;
+            }
         }
         function renderCost(c) {
             document.getElementById('costSummary').innerHTML = `
@@ -1067,7 +1269,11 @@
         }
         function renderRisks(risks) {
             document.getElementById('riskList').innerHTML = risks.map(r => `<div class="risk-item"><div class="risk-level ${r.level}"></div><div class="risk-content"><h4>${r.title}</h4><p>${r.desc}</p></div></div>`).join('');
-            document.getElementById('optimizationTips').innerHTML = `<p><strong>1. 分阶段部署：</strong>先小规模POC验证，再批量推广。</p><p><strong>2. 标准化选型：</strong>优先选用标准协议设备。</p><p><strong>3. 安全加固：</strong>启用TLS加密、固件签名验证。</p><p><strong>4. 数据治理：</strong>建立数据分级分类制度。</p><p><strong>5. 运维体系：</strong>建设统一运维管理平台。</p>`;
+            if (currentSolution.optimizationTips && currentSolution.optimizationTips.length) {
+                document.getElementById('optimizationTips').innerHTML = currentSolution.optimizationTips.map((t, i) => `<p><strong>${i+1}. ${t.split('：')[0]}：</strong>${t.split('：').slice(1).join('：')}</p>`).join('');
+            } else {
+                document.getElementById('optimizationTips').innerHTML = `<p><strong>1. 分阶段部署：</strong>先小规模POC验证，再批量推广。</p><p><strong>2. 标准化选型：</strong>优先选用标准协议设备。</p><p><strong>3. 安全加固：</strong>启用TLS加密、固件签名验证。</p><p><strong>4. 数据治理：</strong>建立数据分级分类制度。</p><p><strong>5. 运维体系：</strong>建设统一运维管理平台。</p>`;
+            }
         }
         function renderKnowledge(insights) {
             const btn = document.getElementById('kbTabBtn');
@@ -1080,10 +1286,10 @@
             const panel = document.getElementById('comparePanel');
             if (solutionVersions.length < 2) { panel.classList.remove('active'); return; }
             panel.classList.add('active');
-            const v1 = solutionVersions[solutionVersions.length-2], v2 = solutionVersions[solutionVersions.length-1];
+            const g1 = solutionVersions[solutionVersions.length-2], g2 = solutionVersions[solutionVersions.length-1];
             document.getElementById('compareGrid').innerHTML = `
-                <div class="compare-card"><h4>版本 ${v1.version}（原方案）</h4><div class="compare-item"><span class="key">场景</span><span class="val">${v1.sceneName}</span></div><div class="compare-item"><span class="key">预算</span><span class="val">¥${v1.budget}万</span></div><div class="compare-item"><span class="key">设备数</span><span class="val">${v1.devices}台</span></div><div class="compare-item"><span class="key">资料</span><span class="val">${(v1.kbFiles||[]).length}份</span></div></div>
-                <div class="compare-card"><h4>版本 ${v2.version}（新方案）</h4><div class="compare-item"><span class="key">场景</span><span class="val">${v2.sceneName}</span></div><div class="compare-item"><span class="key">预算</span><span class="val">¥${v2.budget}万</span></div><div class="compare-item"><span class="key">设备数</span><span class="val">${v2.devices}台</span></div><div class="compare-item"><span class="key">资料</span><span class="val">${(v2.kbFiles||[]).length}份</span></div></div>`;
+                <div class="compare-card"><h4>上一次生成（版本 ${solutionVersions.length-1}）</h4><div class="compare-item"><span class="key">场景</span><span class="val">${g1.medium.sceneName}</span></div><div class="compare-item"><span class="key">预算</span><span class="val">¥${g1.medium.budget}万</span></div><div class="compare-item"><span class="key">设备数</span><span class="val">${g1.medium.devices}台</span></div></div>
+                <div class="compare-card"><h4>本次生成（版本 ${solutionVersions.length}）</h4><div class="compare-item"><span class="key">场景</span><span class="val">${g2.medium.sceneName}</span></div><div class="compare-item"><span class="key">预算</span><span class="val">¥${g2.medium.budget}万</span></div><div class="compare-item"><span class="key">设备数</span><span class="val">${g2.medium.devices}台</span></div></div>`;
         }
         function toggleCompare() { const p = document.getElementById('comparePanel'); p.classList.toggle('active'); if (solutionVersions.length < 2) showToast('请生成多个版本'); }
         function openEditModal() { document.getElementById('editBudget').value = document.getElementById('budget').value; document.getElementById('editDevices').value = document.getElementById('devices').value; document.getElementById('editModal').classList.add('active'); }
@@ -1098,12 +1304,15 @@
         function exportWord() {
             if (!currentSolution) return;
             const s = currentSolution;
-            const content = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${s.sceneName}</title><style>body{font-family:'Microsoft YaHei',sans-serif;line-height:1.8;color:#333;padding:40px}h1{color:#4f46e5;font-size:24px;border-bottom:3px solid #4f46e5;padding-bottom:10px}h2{color:#1e293b;font-size:18px;margin-top:30px;border-left:4px solid #4f46e5;padding-left:12px}table{width:100%;border-collapse:collapse;margin:16px 0}th{background:#f1f5f9;padding:10px;text-align:left;border:1px solid #e2e8f0;font-size:13px}td{padding:10px;border:1px solid #e2e8f0;font-size:13px}</style></head><body><h1>${s.sceneIcon} ${s.sceneName}</h1><h2>一、项目概述</h2><p>${s.desc}</p><h2>二、硬件选型</h2><table><tr><th>类型</th><th>型号</th><th>参数</th><th>单价</th><th>数量</th></tr>${s.hardware.map(h=>`<tr><td>${h.type}</td><td>${h.model}</td><td>${h.params}</td><td>¥${h.price.toLocaleString()}</td><td>${h.qty}</td></tr>`).join('')}</table><h2>三、成本预算</h2><table><tr><th>项目</th><th>明细</th><th>金额</th><th>占比</th></tr>${s.cost.items.map(i=>`<tr><td>${i.name}</td><td>${i.detail}</td><td>¥${i.amount.toLocaleString()}</td><td>${i.percent}%</td></tr>`).join('')}</table><br><p style="text-align:center;color:#94a3b8;font-size:12px;">— AI智能物联网方案生成器 —</p></body></html>`;
+            let content = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${s.sceneName} - ${s.level}</title><style>body{font-family:'Microsoft YaHei',sans-serif;line-height:1.8;color:#333;padding:40px}h1{color:#4f46e5;font-size:24px;border-bottom:3px solid #4f46e5;padding-bottom:10px}h2{color:#1e293b;font-size:18px;margin-top:30px;border-left:4px solid #4f46e5;padding-left:12px}table{width:100%;border-collapse:collapse;margin:16px 0}th{background:#f1f5f9;padding:10px;text-align:left;border:1px solid #e2e8f0;font-size:13px}td{padding:10px;border:1px solid #e2e8f0;font-size:13px}</style></head><body><h1>${s.sceneIcon} ${s.sceneName} — ${s.level}</h1><h2>一、项目概述</h2><p>${s.desc}</p><h2>二、硬件选型</h2><table><tr><th>类型</th><th>型号</th><th>参数</th><th>单价</th><th>数量</th></tr>${s.hardware.map(h=>`<tr><td>${h.type}</td><td>${h.model}</td><td>${h.params}</td><td>¥${h.price.toLocaleString()}</td><td>${h.qty}</td></tr>`).join('')}</table><h2>三、成本预算</h2><table><tr><th>项目</th><th>明细</th><th>金额</th><th>占比</th></tr>${s.cost.items.map(i=>`<tr><td>${i.name}</td><td>${i.detail}</td><td>¥${i.amount.toLocaleString()}</td><td>${i.percent}%</td></tr>`).join('')}</table>`;
+            if (s.implementationSteps) {
+                content += `<h2>四、实施计划</h2>${s.implementationSteps.map(p=>`<p><strong>${p.phase}（${p.duration}）：</strong>${p.tasks.join('、')}</p>`).join('')}`;
+            }
+            content += `<br><p style="text-align:center;color:#94a3b8;font-size:12px;">— AI智能物联网方案生成器 v3.0 —</p></body></html>`;
             const blob = new Blob(['\ufeff'+content], { type: 'application/msword' });
-            const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = s.sceneName + '.doc'; a.click(); URL.revokeObjectURL(a.href);
+            const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = s.sceneName + '-' + s.level + '.doc'; a.click(); URL.revokeObjectURL(a.href);
             showToast('Word文档已导出！');
         }
-    
-    </script>
+</script>
 </body>
 </html>
