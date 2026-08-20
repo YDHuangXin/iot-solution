@@ -702,7 +702,11 @@
         const fileIconMap = { pdf:'📕', doc:'📘', docx:'📘', txt:'📄', xlsx:'📗', csv:'📊', json:'📋', md:'📝' };
 
         document.addEventListener('DOMContentLoaded', () => {
-            initSceneTags(); initRangeSliders(); initTabs(); initKbUpload(); checkAuth();
+            try { initSceneTags(); } catch(e) { console.error('initSceneTags failed:', e); }
+            try { initRangeSliders(); } catch(e) { console.error('initRangeSliders failed:', e); }
+            try { initTabs(); } catch(e) { console.error('initTabs failed:', e); }
+            try { initKbUpload(); } catch(e) { console.error('initKbUpload failed:', e); }
+            try { checkAuth(); } catch(e) { console.error('checkAuth failed:', e); }
         });
 
         function initSceneTags() {
@@ -743,7 +747,7 @@
         }
         function switchAuthTab(tab) {
             document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'));
-            event.target.classList.add('active');
+            document.querySelector(`.auth-tab[onclick*="'${tab}'"]`).classList.add('active');
             document.getElementById('loginForm').style.display = tab === 'login' ? '' : 'none';
             document.getElementById('registerForm').style.display = tab === 'register' ? '' : 'none';
             document.getElementById('authError').style.display = 'none';
