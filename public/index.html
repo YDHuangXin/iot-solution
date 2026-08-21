@@ -584,7 +584,7 @@
                                 <table class="data-table"><thead><tr><th>设备类型</th><th>推荐型号</th><th>核心参数</th><th>单价(元)</th><th>数量</th></tr></thead><tbody id="hardwareBody"></tbody></table>
                             </div>
                             <div class="solution-content" id="tab-architecture">
-                                <div class="architecture-diagram" id="archDiagram"></div>
+                                <div id="implementationSection"></div><div class="architecture-diagram" id="archDiagram"></div>
                                 <div class="card" style="margin-top:16px">
                                     <div class="card-title"><div class="icon">📡</div>数据流向</div>
                                     <div id="dataFlow" style="line-height:1.8;color:var(--text-muted);font-size:0.9rem;"></div>
@@ -601,7 +601,7 @@
                                 <div class="info-grid" id="costSummary"></div>
                                 <div class="card" style="margin-top:16px">
                                     <div class="card-title"><div class="icon">📊</div>成本分布</div>
-                                    <div class="cost-chart" id="costChart"></div>
+                                    <div class="cost-chart" id="costChart"></div><div id="roiSection"></div>
                                 </div>
                                 <table class="data-table" style="margin-top:16px"><thead><tr><th>费用项目</th><th>明细</th><th>金额(元)</th><th>占比</th></tr></thead><tbody id="costBody"></tbody></table>
                             </div>
@@ -613,7 +613,7 @@
                                 </div>
                             </div>
                             <div class="solution-content" id="tab-knowledge">
-                                <div class="kb-reference" id="kbRefContent"></div>
+                                <div id="searchInsightsSection"></div><div class="kb-reference" id="kbRefContent"></div>
                                 <div class="card" style="margin-top:16px">
                                     <div class="card-title"><div class="icon">🧠</div>AI 分析</div>
                                     <div id="kbAnalysis" style="line-height:1.8;color:var(--text-muted);font-size:0.9rem;"></div>
@@ -1086,11 +1086,11 @@ const API = window.location.origin;
 
             // 根据复杂度增加内容
             if (level === 'simple') {
-                return { ...base, level: '简单方案', levelIcon: '📝' };
+                return { ...base, level: 'simple', levelLabel: '简单方案', levelIcon: '📝', searchContentSummary: sceneData.searchContentSummary || '', implementationSteps: generateImplementationSteps(sceneData, 'simple'), dataFlow: generateDataFlow(sceneData, 'simple'), platformModules: generatePlatformModules(sceneData, 'simple'), optimizationTips: generateOptimizationTips(sceneData, 'simple') };
             } else if (level === 'medium') {
-                return { ...base, level: '中等方案', levelIcon: '📋', implementationSteps: generateImplementationSteps(sceneData), dataFlow: generateDataFlow(sceneData) };
+                return { ...base, level: 'medium', levelLabel: '中等方案', levelIcon: '📋', searchContentSummary: sceneData.searchContentSummary || '', implementationSteps: generateImplementationSteps(sceneData, 'medium'), dataFlow: generateDataFlow(sceneData, 'medium'), platformModules: generatePlatformModules(sceneData, 'medium'), optimizationTips: generateOptimizationTips(sceneData, 'medium') };
             } else {
-                return { ...base, level: '复杂方案', levelIcon: '📚', implementationSteps: generateImplementationSteps(sceneData), dataFlow: generateDataFlow(sceneData), platformModules: generatePlatformModules(sceneData), optimizationTips: generateOptimizationTips(), roiAnalysis: generateROIAnalysis(budget, devices) };
+                return { ...base, level: 'complex', levelLabel: '复杂方案', levelIcon: '📚', implementationSteps: generateImplementationSteps(sceneData, 'complex'), dataFlow: generateDataFlow(sceneData, 'complex'), platformModules: generatePlatformModules(sceneData, 'complex'), optimizationTips: generateOptimizationTips(sceneData, 'complex'), roiAnalysis: generateROIAnalysis(budget, devices, sceneData), searchContentSummary: sceneData.searchContentSummary || '' };
             }
         }
 
@@ -1130,52 +1130,146 @@ const API = window.location.origin;
             }
             return base;
         }
-        function generateImplementationSteps(sceneData) {
-            return [
-                { phase: '第一阶段：需求调研', duration: '1-2周', tasks: ['现场勘察', '需求确认', '网络环境评估'] },
-                { phase: '第二阶段：方案设计', duration: '1周', tasks: ['设备选型', '网络拓扑设计', '平台对接方案'] },
-                { phase: '第三阶段：设备部署', duration: '2-4周', tasks: ['传感器安装', '网关部署', '通信联调'] },
-                { phase: '第四阶段：平台接入', duration: '1-2周', tasks: ['设备注册', '数据对接', '规则引擎配置'] },
-                { phase: '第五阶段：测试验收', duration: '1周', tasks: ['功能测试', '压力测试', '用户培训'] }
-            ];
+        function generateImplementationSteps(sceneData, level) {
+            if (level === 'simple') {
+                return [
+                    { phase: '第一阶段：需求调研与方案设计', duration: '1-2周', tasks: ['现场勘察与需求确认', '设备选型', '整体方案架构设计'] },
+                    { phase: '第二阶段：设备部署', duration: '2-3周', tasks: ['传感器安装与调试', '网关部署与网络接入', '通信联调与数据验证'] },
+                    { phase: '第三阶段：平台接入与测试验收', duration: '1-2周', tasks: ['设备注册与数据对接', '基础功能测试', '项目验收与上线'] }
+                ];
+            } else if (level === 'medium') {
+                return [
+                    { phase: '第一阶段：需求调研与方案设计', duration: '2-3周', tasks: ['现场勘察与需求调研', '业务场景梳理与痛点分析', '网络环境评估与覆盖测试', '设备选型对比与POC验证', '整体方案架构设计评审'] },
+                    { phase: '第二阶段：设备部署与网络建设', duration: '3-4周', tasks: ['传感器布点与安装施工', '网关设备部署与上电调试', '通信网络建设与信号优化', '边缘计算节点配置', '设备入网与协议对接'] },
+                    { phase: '第三阶段：平台接入与系统联调', duration: '2-3周', tasks: ['设备注册与接入平台', '数据采集规则配置', '业务逻辑与规则引擎开发', 'API接口对接与数据流转测试', '告警策略与联动规则配置'] },
+                    { phase: '第四阶段：测试验收与上线运行', duration: '1-2周', tasks: ['功能测试与性能压测', '安全测试与渗透扫描', '用户培训与操作手册交付', '试运行与问题修复', '项目验收与正式上线'] }
+                ];
+            } else {
+                return [
+                    { phase: '第一阶段：深度需求调研', duration: '2-3周', tasks: ['业务流程全量梳理与痛点深度分析', '多现场勘察与网络环境全面评估', '现有IT系统调研与集成需求评估', '设备选型对比与多轮POC验证', '技术可行性论证与投资回报率分析', '整体方案架构设计与专家评审'] },
+                    { phase: '第二阶段：详细方案设计', duration: '2-3周', tasks: ['感知层详细设计（传感器布点方案/供电方案/防护等级确认）', '网络层详细设计（通信协议选型/拓扑规划/冗余设计）', '平台层架构设计（数据模型/存储方案/计算引擎选型）', '应用层功能设计（可视化方案/交互设计/权限体系）', '安全架构设计（等保合规方案/加密方案/容灾方案）'] },
+                    { phase: '第三阶段：设备部署与网络建设', duration: '4-6周', tasks: ['传感器批量安装施工与标定校准', '网关设备部署与上电调试', '通信网络建设与信号全面优化', '边缘计算节点部署与容器化配置', '设备批量入网与多协议对接', '分阶段联调测试与问题闭环修复'] },
+                    { phase: '第四阶段：平台开发与接入', duration: '3-4周', tasks: ['设备批量接入与注册管理', '数据模型配置与采集规则设定', '业务逻辑开发与规则引擎编排', '可视化大屏与移动端开发', 'API接口对接与第三方系统集成', '权限体系配置与安全策略部署'] },
+                    { phase: '第五阶段：全面测试', duration: '2-3周', tasks: ['功能全量测试与缺陷修复闭环', '性能压力测试与容量评估', '安全渗透测试与漏洞修复', '容灾演练与故障恢复测试', '用户UAT验收测试与反馈收集', '操作手册与维护文档编制'] },
+                    { phase: '第六阶段：上线与持续运维', duration: '持续', tasks: ['灰度上线与全量切换', '7×24小时运维监控体系搭建', '设备健康管理与预测性维护', '数据分析与AI模型持续优化', '系统扩容规划与滚动升级', '定期安全审计与合规检查'] }
+                ];
+            }
         }
-        function generateDataFlow(sceneData) {
-            return `1. 数据采集：${sceneData.sensors.slice(0,3).join('、')}等设备实时采集环境数据。
-2. 边缘处理：${sceneData.gateway}进行数据过滤、聚合、协议转换，支持本地决策。
-3. 数据传输：经${sceneData.protocols.join(' / ')}加密上传至云平台。
-4. 云端分析：${sceneData.platform}进行存储、分析、可视化，支持AI推理。
-5. 指令下发：平台生成控制指令，经边缘层下发至执行设备，实现闭环控制。`;
+        function generateDataFlow(sceneData, level) {
+            if (level === 'simple') {
+                return `1. 数据采集：${sceneData.sensors.slice(0,3).join('、')}等设备实时采集数据，通过${sceneData.protocols[0]}协议传输。
+2. 网关汇聚：数据汇总至网关进行初步处理。
+3. 云端展示：${sceneData.platform}接收数据并可视化展示。`;
+            } else if (level === 'medium') {
+                return `1. 数据采集层：${sceneData.sensors.join('、')}等设备按照预设周期（可配置1s~5min）采集环境数据，支持多参数同时监测。
+
+2. 边缘处理层：${sceneData.gateway}进行数据清洗、格式转换、本地缓存和协议适配，支持断网续传（最长72小时）和边缘规则触发（阈值告警/简单联动）。
+
+3. 网络传输层：经${sceneData.protocols.join(' / ')}加密通道上传至云平台，采用TLS 1.2+保障传输安全，支持数据压缩和多链路冗余。
+
+4. 云端处理层：${sceneData.platform}进行数据入库、实时流计算、规则引擎匹配、历史数据分析和可视化渲染，支持多种数据格式接入。
+
+5. 控制执行层：平台根据业务规则和AI分析结果生成控制指令，经加密通道反向下发至边缘网关和执行设备，实现从感知到控制的完整闭环。`;
+            } else {
+                return `1. 感知采集层：部署${sceneData.sensors.join('、')}等多类型传感器节点，支持模拟量（4-20mA/0-10V）、数字量（RS485/RS232）、开关量采集，采样频率1ms~5min软件可配置，设备内置自诊断、故障自检和防雷保护，防护等级IP65+，工作温度-40℃~85℃。
+
+2. 边缘计算层：${sceneData.gateway}作为边缘计算核心，内置容器化运行环境，执行数据清洗（去噪/滤波/异常值剔除）、多协议转换（Modbus RTU/TCP、OPC-UA、BACnet→标准MQTT）、本地规则引擎（阈值告警/设备联动/紧急控制）、边缘缓存（断网72小时数据本地存储，网络恢复后自动续传），边缘侧决策延迟<50ms。
+
+3. 网络传输层：构建${sceneData.protocols.join(' + ')}融合通信网络，支持5G/NB-IoT/LoRa/WiFi/以太网多链路冗余切换，端到端TLS 1.3加密传输，数据压缩率≥60%（采用GZIP/Protobuf），传输延迟<100ms（5G场景<20ms），网络可用性≥99.9%，支持QoS分级保障关键业务数据优先传输。
+
+4. 云端数据层：采用时序数据库（InfluxDB/TDengine）存储高频传感器数据，关系型数据库（PostgreSQL/MySQL）存储设备档案和业务数据，对象存储（OSS/COS）存储图片/视频/文档等非结构化数据，支持PB级数据管理、冷热数据自动分层（热数据SSD/温数据HDD/冷数据归档存储）和毫秒级时间序列查询。
+
+5. 平台服务层：${sceneData.platform}提供设备全生命周期管理、实时数据采集与流处理、可视化规则引擎编排、AI智能分析与预测、多端可视化展示、开放API生态六大核心服务模块，单集群支持百万级设备并发接入和水平弹性扩展，SLA≥99.95%。
+
+6. 应用控制层：基于数字孪生技术构建物理设备的虚拟映射模型，实现设备状态实时仿真、故障预测预警（提前7-30天）、控制策略AI优化；支持APP/Web/微信小程序/PC客户端/大屏多端展示，指令下发延迟<500ms，控制成功率≥99.99%，形成"感知-分析-决策-执行"的完整智能闭环。`;
+            }
         }
-        function generatePlatformModules(sceneData) {
-            return [
-                { name: '设备管理', desc: '设备注册、OTA升级、状态监控、远程配置' },
-                { name: '数据服务', desc: '实时流处理、历史查询、数据导出、API开放' },
-                { name: '规则引擎', desc: '可视化编排、告警触发、设备联动、自动化' },
-                { name: 'AI分析', desc: '异常检测、趋势预测、智能诊断、知识图谱' },
-                { name: '可视化', desc: 'GIS地图、实时看板、大屏展示、移动端适配' },
-                { name: '安全管理', desc: '设备证书、访问控制、审计日志、数据加密' }
-            ];
+        function generatePlatformModules(sceneData, level) {
+            if (level === 'simple') {
+                return [
+                    { name: '设备管理', desc: '设备注册、在线状态监控、远程查看' },
+                    { name: '数据展示', desc: '实时数据查看、基础历史记录查询' },
+                    { name: '告警通知', desc: '阈值告警、短信通知' }
+                ];
+            } else if (level === 'medium') {
+                return [
+                    { name: '设备接入与管理', desc: '支持MQTT/CoAP/HTTP多协议接入，提供设备注册、认证鉴权、OTA远程升级、在线状态监控、批量配置下发、设备分组管理和标签管理。' },
+                    { name: '数据采集与存储', desc: '内置时序数据处理引擎，支持原始数据和聚合数据分层存储，数据保留策略灵活可配置，支持TB级数据管理、自动数据压缩和毫秒级时间序列查询。' },
+                    { name: '规则引擎与自动化', desc: '提供可视化规则编排界面，支持阈值告警、复合条件触发、设备联动、定时任务、Webhook回调、消息队列推送等10+触发类型，规则执行引擎延迟<100ms，支持规则导入导出和版本管理。' },
+                    { name: '数据分析与AI', desc: '集成机器学习平台，提供异常检测、趋势预测、聚类分析、关联挖掘等算法模型，支持自定义模型训练和在线部署，实现预测性维护和智能诊断。' },
+                    { name: '可视化与大屏', desc: '内置拖拽式大屏设计器，支持GIS地图、3D模型、实时曲线、数据表格、告警列表等20+组件，支持Web/APP/微信小程序多端适配，支持自定义主题和权限分级控制。' },
+                    { name: '安全管理', desc: '提供设备证书认证、RBAC访问控制模型、操作审计日志、数据传输加密、定期安全扫描和漏洞管理，满足基础合规要求。' }
+                ];
+            } else {
+                return [
+                    { name: '设备接入与全生命周期管理', desc: '支持MQTT/CoAP/HTTP/Modbus/OPC-UA/BACnet等多协议接入，提供设备注册、双向认证、OTA远程升级、在线状态监控、批量配置下发、设备影子和数字孪生映射，单集群支持百万级设备并发连接，覆盖设备从注册、运行、维护到退役的全生命周期管理。' },
+                    { name: '数据采集与智能存储', desc: '内置高性能时序数据处理引擎，支持原始数据/聚合数据/事件数据分层存储，数据保留策略灵活可配置（热数据SSD 7天/温数据HDD 30天/冷数据归档3年），支持PB级数据管理和毫秒级时间序列查询，自动冷热数据分层和压缩优化。' },
+                    { name: '可视化规则引擎与自动化', desc: '提供拖拽式规则编排界面，支持阈值告警、复合条件触发、设备联动、定时任务、Webhook回调、消息队列推送等15+触发类型，规则执行引擎延迟<100ms，支持规则版本管理、灰度发布和A/B测试。' },
+                    { name: 'AI分析与智能决策', desc: '集成机器学习平台，提供异常检测、趋势预测、聚类分析、关联挖掘、知识图谱等算法模型，支持自定义模型训练、在线部署和自动调优，实现预测性维护（提前7-30天预警）、智能诊断和自适应优化控制。' },
+                    { name: '多端可视化与大屏', desc: '内置拖拽式大屏设计器，支持GIS地图、3D模型、实时曲线、数据表格、告警列表、视频融合等30+组件，支持Web/APP/微信小程序/PC客户端多端适配，支持自定义主题、权限分级控制和数据权限隔离。' },
+                    { name: '全链路安全与合规', desc: '构建端到端安全体系：设备端（安全启动/固件签名验证/硬件加密芯片/防篡改）、传输层（TLS 1.3/双向证书认证/数据完整性校验）、平台层（RBAC权限模型/细粒度访问控制/操作审计日志/数据脱敏/加密存储），全面符合等保2.0三级要求。' },
+                    { name: '智能运维与监控中心', desc: '构建统一运维管理中心，实现设备健康评分、故障根因分析、容量规划预警、自动化巡检、工单流转闭环、SLA监控，支持 Prometheus + Grafana 技术栈集成，提供7×24小时多渠道告警通知（短信/邮件/企业微信/钉钉/电话）。' },
+                    { name: '开放API生态与第三方集成', desc: '提供RESTful API、WebSocket实时推送、gRPC高性能调用、Webhook事件订阅等标准化开放接口，支持与ERP/MES/CRM/OA/财务等第三方系统深度集成，支持OAuth 2.0/SAML/LDAP单点登录，提供多语言SDK（Java/Python/Go/Node.js/C#）和完整的API文档中心。' }
+                ];
+            }
         }
-        function generateOptimizationTips() {
-            return [
-                '分阶段部署：先小规模POC验证，再批量推广，降低项目风险。',
-                '标准化选型：优先选用支持标准协议（MQTT/CoAP）的设备，提高兼容性。',
-                '安全加固：启用TLS加密、固件签名验证、设备双向认证。',
-                '数据治理：建立数据分级分类制度，明确数据生命周期管理策略。',
-                '运维体系：建设统一运维管理平台，实现设备全生命周期管理。',
-                '容灾备份：关键数据异地备份，核心服务双活部署，保障业务连续性。',
-                '成本优化：利用边缘计算减少云端流量，按需订阅云服务降低固定成本。'
-            ];
+        function generateOptimizationTips(sceneData, level) {
+            if (level === 'simple') {
+                return [
+                    '分阶段部署：建议先小规模验证，确认效果后再逐步推广。',
+                    '标准化选型：优先选用支持MQTT等标准协议的设备，提高兼容性。',
+                    '安全加固：启用TLS加密传输，实施设备认证。'
+                ];
+            } else if (level === 'medium') {
+                return [
+                    '分阶段部署：建议先选择1-2个典型场景进行小规模POC验证，验证技术可行性和业务价值后再批量推广，有效降低项目风险。',
+                    '标准化选型：优先选用支持MQTT、CoAP、HTTP等标准协议的设备，避免厂商锁定，提高系统兼容性和后期扩展能力。',
+                    '安全加固：端到端启用TLS/SSL加密传输，实施设备双向证书认证，定期进行固件签名验证和安全漏洞扫描。',
+                    '数据治理：建立数据分级分类管理制度，明确数据采集、传输、存储、使用、销毁的全生命周期管理策略。',
+                    '运维管理：建议建立定期巡检制度，关注设备在线率、数据完整性和告警处理及时率等关键指标。',
+                    '成本控制：优先保障核心业务的设备覆盖和平台功能，非核心功能可分期建设，合理控制初期投资。'
+                ];
+            } else {
+                return [
+                    '分阶段部署：建议先选择2-3个典型场景进行小规模POC验证，验证技术可行性和业务价值后再批量推广，有效降低项目风险。',
+                    '标准化选型：优先选用支持MQTT、CoAP、HTTP等标准协议的设备，避免厂商锁定，提高系统兼容性和后期扩展能力。',
+                    '安全加固：端到端启用TLS 1.3加密传输，实施设备双向证书认证，定期进行固件签名验证和安全漏洞扫描，关键设备启用安全启动和硬件加密芯片。',
+                    '数据治理：建立数据分级分类管理制度，明确数据采集、传输、存储、使用、销毁的全生命周期管理策略，支持冷热数据自动分层。',
+                    '运维体系建设：构建统一运维管理平台，实现设备远程监控、故障预警、工单流转、SLA监控的闭环管理，降低运维人力成本40%以上。',
+                    '容灾备份方案：关键业务数据实施异地备份（建议两地三中心架构），核心服务采用双活/多活部署，保障业务连续性达到99.99%。',
+                    '成本优化策略：利用边缘计算在本地完成数据预处理和简单决策，减少60%以上的云端数据流量；采用云服务按需订阅模式，避免过度投资。',
+                    '技术债务管理：定期评估设备固件版本、平台组件升级、API接口兼容性，制定技术升级路线图，避免技术栈老化。',
+                    '人才培养：建立IoT运维团队技能矩阵，定期开展技术培训和安全意识培训，确保团队能力与系统复杂度匹配。',
+                    '合规要求：关注国家关于物联网数据安全、个人信息保护、等保2.0等相关法规要求，确保项目合规运营。'
+                ];
+            }
         }
-        function generateROIAnalysis(budget, devices) {
-            const annualSaving = Math.round(budget * 10000 * 0.25);
-            const paybackMonths = Math.round(budget * 10000 / (annualSaving / 12));
+        function generateROIAnalysis(budget, devices, sceneData) {
+            const totalInvest = budget * 10000;
+            const annualSaving = Math.round(totalInvest * 0.25);
+            const annualRevenueIncrease = Math.round(totalInvest * 0.15);
+            const annualBenefit = annualSaving + annualRevenueIncrease;
+            const paybackMonths = Math.round(totalInvest / (annualBenefit / 12));
+            const threeYearROI = Math.round((annualBenefit * 3 - totalInvest) / totalInvest * 100);
             return {
+                totalInvest,
                 annualSaving,
+                annualRevenueIncrease,
+                annualBenefit,
                 paybackMonths,
-                threeYearROI: Math.round((annualSaving * 3 - budget * 10000) / (budget * 10000) * 100),
+                threeYearROI,
                 efficiency: '+30-50%',
-                maintenance: '降低40%'
+                maintenance: '降低40%',
+                downtime: '减少60%',
+                quality: '提升25%',
+                energySaving: '降低15-20%',
+                laborSaving: '节省30%人力',
+                details: [
+                    { item: '运维成本降低', value: `约¥${(annualSaving*0.4/10000).toFixed(1)}万元/年`, desc: '通过设备远程监控和预测性维护，减少现场巡检和故障处理成本' },
+                    { item: '生产效率提升', value: `约¥${(annualRevenueIncrease*0.6/10000).toFixed(1)}万元/年`, desc: '实时数据采集和智能分析优化生产流程，减少停机时间' },
+                    { item: '能耗优化', value: `约¥${(annualSaving*0.3/10000).toFixed(1)}万元/年`, desc: '智能调控设备运行策略，降低无效能耗' },
+                    { item: '人力成本节省', value: `约¥${(annualSaving*0.3/10000).toFixed(1)}万元/年`, desc: '自动化监控和告警减少人工巡检，优化人员配置' }
+                ]
             };
         }
         function generateKbInsights() {
@@ -1214,62 +1308,168 @@ const API = window.location.origin;
         function renderSolution(s) {
             document.getElementById('placeholder').style.display = 'none';
             document.getElementById('solutionResult').classList.add('active');
-            document.getElementById('solutionTitle').textContent = s.sceneIcon + ' ' + s.sceneName + ' · ' + s.levelIcon + s.level;
-            renderOverview(s); renderHardware(s.hardware); renderArchitecture(s); renderPlatform(s); renderCost(s.cost); renderRisks(s.risks); renderKnowledge(s.kbInsights); renderCompare();
+            document.getElementById('solutionTitle').textContent = s.sceneIcon + ' ' + s.sceneName + ' · ' + s.levelIcon + s.levelLabel;
+            renderOverview(s);
+            renderHardware(s.hardware, s.level);
+            renderArchitecture(s);
+            renderPlatform(s);
+            renderCost(s.cost, s.level);
+            renderRisks(s.risks, s.level);
+            // 渲染差异化内容到正确容器
+            var el;
+            el = document.getElementById('implementationSection'); if (el) el.innerHTML = renderImplementationSteps(s.implementationSteps);
+            el = document.getElementById('dataFlow'); if (el) el.innerHTML = renderDataFlow(s.dataFlow);
+            el = document.getElementById('platformModules'); if (el) el.innerHTML = renderPlatformModules(s.platformModules);
+            el = document.getElementById('optimizationTips'); if (el) el.innerHTML = renderOptimizationTips(s.optimizationTips);
+            el = document.getElementById('roiSection'); if (el && s.roiAnalysis) el.innerHTML = renderROI(s.roiAnalysis);
+            el = document.getElementById('searchInsightsSection'); if (el && s.searchContentSummary && s.searchContentSummary.length > 50) el.innerHTML = renderSearchInsights(s.searchContentSummary);
+            el = document.getElementById('kbRefContent'); if (el) el.innerHTML = renderKbInsights(s.kbFiles, s.kbInsights);
+            renderCompare();
         }
         function renderOverview(s) {
-            document.getElementById('overviewGrid').innerHTML = `
-                <div class="info-card"><div class="label">应用场景</div><div class="value">${s.sceneIcon} ${s.sceneName}</div></div>
-                <div class="info-card"><div class="label">设备规模</div><div class="value">${s.devices} 台</div></div>
-                <div class="info-card"><div class="label">项目预算</div><div class="value">¥${s.budget}万</div></div>
-                <div class="info-card"><div class="label">通信方式</div><div class="value">${getCommName(s.communication)}</div></div>
-                <div class="info-card"><div class="label">云平台</div><div class="value">${s.platform}</div></div>
-                <div class="info-card"><div class="label">核心功能</div><div class="value">${s.features.length} 项</div></div>`;
-            let html = `<p>${s.desc}</p><br><p><strong>方案亮点：</strong></p><ul style="margin-top:8px;padding-left:20px;">${s.features.map(f=>`<li>${f}</li>`).join('')}</ul>`;
-            if (s.dataFromSearch) html += `<br><p style="color:var(--success);">🔍 本方案数据来源于互联网实时搜索 + 行业方案库</p>`;
-            if (s.kbInsights?.customSuggestions?.length) html += `<br><p><strong>📚 资料库参考：</strong></p><ul style="margin-top:8px;padding-left:20px;">${s.kbInsights.customSuggestions.map(x=>`<li>${x}</li>`).join('')}</ul>`;
+            const isSimple = s.level === 'simple';
+            const isMedium = s.level === 'medium';
+            const isComplex = s.level === 'complex';
+
+            // 简单方案精简卡片
+            if (isSimple) {
+                document.getElementById('overviewGrid').innerHTML = `
+                    <div class="info-card"><div class="label">应用场景</div><div class="value">${s.sceneIcon} ${s.sceneName}</div></div>
+                    <div class="info-card"><div class="label">设备规模</div><div class="value">${s.devices} 台</div></div>
+                    <div class="info-card"><div class="label">项目预算</div><div class="value">¥${s.budget}万</div></div>
+                    <div class="info-card"><div class="label">通信方式</div><div class="value">${getCommName(s.communication)}</div></div>`;
+            } else {
+                document.getElementById('overviewGrid').innerHTML = `
+                    <div class="info-card"><div class="label">应用场景</div><div class="value">${s.sceneIcon} ${s.sceneName}</div></div>
+                    <div class="info-card"><div class="label">设备规模</div><div class="value">${s.devices} 台</div></div>
+                    <div class="info-card"><div class="label">项目预算</div><div class="value">¥${s.budget}万</div></div>
+                    <div class="info-card"><div class="label">通信方式</div><div class="value">${getCommName(s.communication)}</div></div>
+                    <div class="info-card"><div class="label">云平台</div><div class="value">${s.platform}</div></div>
+                    <div class="info-card"><div class="label">核心功能</div><div class="value">${s.features.length} 项</div></div>`;
+            }
+
+            let html = `<p>${s.desc}</p>`;
+
+            // 联网搜索数据融入方案（只渲染1次）
+            if (s.searchContentSummary && s.searchContentSummary.length > 50) {
+                const summary = s.searchContentSummary.substring(0, 1200);
+                html += `<br><div style="background:rgba(16,185,129,0.08);border-left:3px solid var(--success);padding:14px;margin:12px 0;border-radius:0 8px 8px 0;">
+                    <p style="font-size:0.8rem;color:var(--success);font-weight:600;margin-bottom:8px;">🔍 联网搜索行业数据</p>
+                    <p style="font-size:0.9rem;line-height:1.8;color:var(--text-muted);">${summary}</p>
+                </div>`;
+            }
+
+            // 复杂方案增加行业背景分析
+            if (isComplex) {
+                html += `<br><p><strong>行业趋势分析：</strong></p>
+                    <p style="line-height:1.8;margin-top:8px;">近年来，随着${s.sceneName.replace('方案','').replace('物联网','')}领域数字化转型加速，物联网技术已成为提升运营效率、降低管理成本的关键基础设施。根据行业调研数据，采用物联网解决方案后，企业运营效率平均提升30-50%，运维成本降低20-40%，设备故障率减少60%以上。本方案基于最新行业实践和技术标准，结合您的具体需求（预算¥${s.budget}万、${s.devices}台设备规模），从感知层、网络层、平台层到应用层进行全栈设计，确保方案的前瞻性、可靠性和可扩展性。</p>`;
+            }
+
+            // 资料库洞察
+            if (s.kbInsights && s.kbInsights.length) {
+                html += `<br><div style="background:rgba(99,102,241,0.08);border-left:3px solid var(--primary);padding:14px;margin:12px 0;border-radius:0 8px 8px 0;">
+                    <p style="font-size:0.8rem;color:var(--primary-light);font-weight:600;margin-bottom:8px;">📚 资料库参考分析</p>`;
+                s.kbInsights.forEach(insight => {
+                    html += `<p style="font-size:0.9rem;line-height:1.8;color:var(--text-muted);margin-bottom:6px;">• ${insight.summary || insight}</p>`;
+                });
+                html += `</div>`;
+            }
+
             document.getElementById('solutionSummary').innerHTML = html;
         }
-        function renderHardware(hw) { document.getElementById('hardwareBody').innerHTML = hw.map(h => `<tr><td><strong>${h.type}</strong></td><td>${h.model}</td><td style="color:var(--text-muted);font-size:0.85rem">${h.params}</td><td>¥${h.price.toLocaleString()}</td><td>${h.qty}</td></tr>`).join(''); }
+        function renderHardware(hw, level = 'complex') {
+            const isSimple = level === 'simple';
+            const items = isSimple ? hw.slice(0, 3) : hw;
+            document.getElementById('hardwareBody').innerHTML = items.map(h => `<tr><td><strong>${h.type}</strong></td><td>${h.model}</td><td style="color:var(--text-muted);font-size:0.85rem">${h.params}</td><td>¥${h.price.toLocaleString()}</td><td>${h.qty}</td></tr>`).join('');
+            if (isSimple) {
+                document.getElementById('hardwareBody').innerHTML += `<tr><td colspan="5" style="text-align:center;color:var(--text-muted);font-size:0.85rem;">—— 中等/复杂方案包含完整 ${hw.length} 项设备清单 ——</td></tr>`;
+            }
+        }
         function renderArchitecture(s) {
-            document.getElementById('archDiagram').innerHTML = `
-                <div class="arch-layer cloud">☁️ 应用层 — ${s.platform}<div class="arch-nodes">${s.features.map(f=>`<span class="arch-node">${f}</span>`).join('')}</div></div>
-                <div class="arch-arrow">↕️ MQTT / HTTPS</div>
-                <div class="arch-layer platform">🖥️ 平台层 — 数据中台 + AI分析<div class="arch-nodes"><span class="arch-node">设备管理</span><span class="arch-node">规则引擎</span><span class="arch-node">数据存储</span><span class="arch-node">AI推理</span></div></div>
-                <div class="arch-arrow">↕️ 数据汇聚</div>
-                <div class="arch-layer network">📡 网络层 — ${getCommName(s.communication)} + ${s.protocols[0]}<div class="arch-nodes"><span class="arch-node">数据转发</span><span class="arch-node">协议转换</span><span class="arch-node">边缘计算</span></div></div>
-                <div class="arch-arrow">↕️ ${s.protocols.join(' / ')}</div>
-                <div class="arch-layer device">🔌 边缘层 — ${s.gateway}<div class="arch-nodes"><span class="arch-node">数据预处理</span><span class="arch-node">本地缓存</span><span class="arch-node">断网续传</span></div></div>
-                <div class="arch-arrow">↕️ 传感数据</div>
-                <div class="arch-layer sensor">📟 感知层<div class="arch-nodes">${s.sensors.map(x=>`<span class="arch-node">${x}</span>`).join('')}</div></div>`;
+            const isSimple = s.level === 'simple';
+            const isComplex = s.level === 'complex';
+            if (isSimple) {
+                document.getElementById('archDiagram').innerHTML = `
+                    <div class="arch-layer cloud">☁️ 云平台 — ${s.platform}<div class="arch-nodes">${s.features.slice(0,3).map(f=>`<span class="arch-node">${f}</span>`).join('')}</div></div>
+                    <div class="arch-arrow">↕️ 数据通信</div>
+                    <div class="arch-layer device">📡 ${s.gateway}<div class="arch-nodes"><span class="arch-node">协议转换</span><span class="arch-node">数据转发</span></div></div>
+                    <div class="arch-arrow">↕️ ${s.protocols[0]}</div>
+                    <div class="arch-layer sensor">📟 感知层<div class="arch-nodes">${s.sensors.slice(0,3).map(x=>`<span class="arch-node">${x}</span>`).join('')}</div></div>`;
+            } else {
+                document.getElementById('archDiagram').innerHTML = `
+                    <div class="arch-layer cloud">☁️ 应用层 — ${s.platform}<div class="arch-nodes">${s.features.map(f=>`<span class="arch-node">${f}</span>`).join('')}</div></div>
+                    <div class="arch-arrow">↕️ MQTT / HTTPS</div>
+                    <div class="arch-layer platform">🖥️ 平台层 — 数据中台 + AI分析<div class="arch-nodes"><span class="arch-node">设备管理</span><span class="arch-node">规则引擎</span><span class="arch-node">数据存储</span>${isComplex?'<span class="arch-node">AI推理</span>':''}</div></div>
+                    <div class="arch-arrow">↕️ 数据汇聚</div>
+                    <div class="arch-layer network">📡 网络层 — ${getCommName(s.communication)} + ${s.protocols[0]}<div class="arch-nodes"><span class="arch-node">数据转发</span><span class="arch-node">协议转换</span><span class="arch-node">边缘计算</span></div></div>
+                    <div class="arch-arrow">↕️ ${s.protocols.join(' / ')}</div>
+                    <div class="arch-layer device">🔌 边缘层 — ${s.gateway}<div class="arch-nodes"><span class="arch-node">数据预处理</span><span class="arch-node">本地缓存</span><span class="arch-node">断网续传</span></div></div>
+                    <div class="arch-arrow">↕️ 传感数据</div>
+                    <div class="arch-layer sensor">📟 感知层<div class="arch-nodes">${s.sensors.map(x=>`<span class="arch-node">${x}</span>`).join('')}</div></div>`;
+            }
             document.getElementById('dataFlow').innerHTML = s.dataFlow ? s.dataFlow.split('\n').map(l => `<p>${l}</p>`).join('') : `<p><strong>1. 数据采集</strong>：传感器实时采集数据上报至边缘网关。</p><p><strong>2. 边缘处理</strong>：${s.gateway}进行数据过滤、聚合、协议转换。</p><p><strong>3. 数据传输</strong>：经${getCommName(s.communication)}加密上传至云平台。</p><p><strong>4. 云端分析</strong>：${s.platform}进行存储、分析、可视化。</p><p><strong>5. 指令下发</strong>：平台生成控制指令实现闭环控制。</p>`;
         }
         function renderPlatform(s) {
-            document.getElementById('platformGrid').innerHTML = `
-                <div class="info-card"><div class="label">平台</div><div class="value">${s.platform}</div></div>
-                <div class="info-card"><div class="label">设备接入</div><div class="value">${s.devices}+ 台</div></div>
-                <div class="info-card"><div class="label">数据存储</div><div class="value">时序数据库</div></div>
-                <div class="info-card"><div class="label">API接口</div><div class="value">RESTful + MQTT</div></div>
-                <div class="info-card"><div class="label">安全认证</div><div class="value">设备证书+Token</div></div>
-                <div class="info-card"><div class="label">可用性</div><div class="value">99.95% SLA</div></div>`;
+            const isSimple = s.level === 'simple';
+            const isComplex = s.level === 'complex';
+
+            if (isSimple) {
+                document.getElementById('platformGrid').innerHTML = `
+                    <div class="info-card"><div class="label">平台</div><div class="value">${s.platform}</div></div>
+                    <div class="info-card"><div class="label">设备接入</div><div class="value">${s.devices}+ 台</div></div>
+                    <div class="info-card"><div class="label">API接口</div><div class="value">RESTful + MQTT</div></div>`;
+            } else if (isComplex) {
+                document.getElementById('platformGrid').innerHTML = `
+                    <div class="info-card"><div class="label">平台</div><div class="value">${s.platform}</div></div>
+                    <div class="info-card"><div class="label">设备接入</div><div class="value">${s.devices}+ 台</div></div>
+                    <div class="info-card"><div class="label">数据存储</div><div class="value">时序数据库 + 对象存储</div></div>
+                    <div class="info-card"><div class="label">API接口</div><div class="value">RESTful + MQTT + WebSocket + gRPC</div></div>
+                    <div class="info-card"><div class="label">安全认证</div><div class="value">双向TLS + 设备证书 + JWT</div></div>
+                    <div class="info-card"><div class="label">可用性</div><div class="value">99.99% SLA（多可用区）</div></div>
+                    <div class="info-card"><div class="label">消息队列</div><div class="value">Kafka / RabbitMQ</div></div>
+                    <div class="info-card"><div class="label">监控告警</div><div class="value">Prometheus + Grafana</div></div>`;
+            } else {
+                document.getElementById('platformGrid').innerHTML = `
+                    <div class="info-card"><div class="label">平台</div><div class="value">${s.platform}</div></div>
+                    <div class="info-card"><div class="label">设备接入</div><div class="value">${s.devices}+ 台</div></div>
+                    <div class="info-card"><div class="label">数据存储</div><div class="value">时序数据库</div></div>
+                    <div class="info-card"><div class="label">API接口</div><div class="value">RESTful + MQTT</div></div>
+                    <div class="info-card"><div class="label">安全认证</div><div class="value">设备证书+Token</div></div>
+                    <div class="info-card"><div class="label">可用性</div><div class="value">99.95% SLA</div></div>`;
+            }
             if (s.platformModules && s.platformModules.length) {
                 document.getElementById('platformModules').innerHTML = s.platformModules.map(m => `<p><strong>${m.name}：</strong>${m.desc}</p>`).join('');
             } else {
                 document.getElementById('platformModules').innerHTML = `<p><strong>核心功能模块：</strong></p><ul style="margin-top:8px;padding-left:20px;line-height:2;"><li><strong>设备管理：</strong>注册、OTA升级、状态监控</li><li><strong>数据服务：</strong>实时流处理、历史查询、导出</li><li><strong>规则引擎：</strong>可视化编排、告警触发、联动</li><li><strong>AI分析：</strong>异常检测、趋势预测</li><li><strong>可视化大屏：</strong>GIS地图、实时看板</li><li><strong>开放能力：</strong>SDK/API、Webhook</li></ul>`;
             }
         }
-        function renderCost(c) {
-            document.getElementById('costSummary').innerHTML = `
-                <div class="info-card"><div class="label">总预算</div><div class="value" style="color:var(--accent)">¥${(c.total/10000).toFixed(1)}万</div></div>
-                <div class="info-card"><div class="label">单设备成本</div><div class="value">¥${Math.round(c.total/currentSolution.devices)}</div></div>
-                <div class="info-card"><div class="label">年运维</div><div class="value">¥${Math.round(c.total*0.08).toLocaleString()}</div></div>`;
+        function renderCost(c, level = 'complex') {
+            const isSimple = level === 'simple';
+            const isComplex = level === 'complex';
+            if (isSimple) {
+                document.getElementById('costSummary').innerHTML = `
+                    <div class="info-card"><div class="label">总预算</div><div class="value" style="color:var(--accent)">¥${(c.total/10000).toFixed(1)}万</div></div>
+                    <div class="info-card"><div class="label">单设备成本</div><div class="value">¥${Math.round(c.total/currentSolution.devices)}</div></div>`;
+            } else {
+                document.getElementById('costSummary').innerHTML = `
+                    <div class="info-card"><div class="label">总预算</div><div class="value" style="color:var(--accent)">¥${(c.total/10000).toFixed(1)}万</div></div>
+                    <div class="info-card"><div class="label">单设备成本</div><div class="value">¥${Math.round(c.total/currentSolution.devices)}</div></div>
+                    <div class="info-card"><div class="label">年运维</div><div class="value">¥${Math.round(c.total*0.08).toLocaleString()}</div></div>`;
+            }
             const colors = ['#6366f1','#06b6d4','#10b981','#f59e0b','#ef4444'];
             document.getElementById('costChart').innerHTML = c.items.map((x,i) => `<div class="cost-bar"><div class="label">${x.name}</div><div class="bar"><div class="bar-fill" style="width:${x.percent}%;background:${colors[i]}">${x.percent}%</div></div><div class="amount">¥${(x.amount/10000).toFixed(1)}万</div></div>`).join('');
             document.getElementById('costBody').innerHTML = c.items.map(x => `<tr><td><strong>${x.name}</strong></td><td style="color:var(--text-muted)">${x.detail}</td><td>¥${x.amount.toLocaleString()}</td><td>${x.percent}%</td></tr>`).join('') + `<tr style="font-weight:700;border-top:2px solid var(--border)"><td>合计</td><td></td><td>¥${c.total.toLocaleString()}</td><td>100%</td></tr>`;
         }
-        function renderRisks(risks) {
-            document.getElementById('riskList').innerHTML = risks.map(r => `<div class="risk-item"><div class="risk-level ${r.level}"></div><div class="risk-content"><h4>${r.title}</h4><p>${r.desc}</p></div></div>`).join('');
-            if (currentSolution.optimizationTips && currentSolution.optimizationTips.length) {
+        function renderRisks(risks, level = 'complex') {
+            const isSimple = level === 'simple';
+            const isComplex = level === 'complex';
+            // 简单方案只显示高风险
+            const filtered = isSimple ? risks.filter(r => r.level === 'high') : risks;
+            document.getElementById('riskList').innerHTML = filtered.map(r => `<div class="risk-item"><div class="risk-level ${r.level}"></div><div class="risk-content"><h4>${r.title}</h4><p>${r.desc}</p></div></div>`).join('');
+
+            if (isSimple) {
+                document.getElementById('optimizationTips').innerHTML = `<p><strong>建议：</strong>先进行小规模POC验证，确认方案可行性后再批量部署。</p>`;
+            } else if (isComplex && currentSolution.optimizationTips && currentSolution.optimizationTips.length) {
                 document.getElementById('optimizationTips').innerHTML = currentSolution.optimizationTips.map((t, i) => `<p><strong>${i+1}. ${t.split('：')[0]}：</strong>${t.split('：').slice(1).join('：')}</p>`).join('');
             } else {
                 document.getElementById('optimizationTips').innerHTML = `<p><strong>1. 分阶段部署：</strong>先小规模POC验证，再批量推广。</p><p><strong>2. 标准化选型：</strong>优先选用标准协议设备。</p><p><strong>3. 安全加固：</strong>启用TLS加密、固件签名验证。</p><p><strong>4. 数据治理：</strong>建立数据分级分类制度。</p><p><strong>5. 运维体系：</strong>建设统一运维管理平台。</p>`;
@@ -1291,6 +1491,97 @@ const API = window.location.origin;
                 <div class="compare-card"><h4>上一次生成（版本 ${solutionVersions.length-1}）</h4><div class="compare-item"><span class="key">场景</span><span class="val">${g1.medium.sceneName}</span></div><div class="compare-item"><span class="key">预算</span><span class="val">¥${g1.medium.budget}万</span></div><div class="compare-item"><span class="key">设备数</span><span class="val">${g1.medium.devices}台</span></div></div>
                 <div class="compare-card"><h4>本次生成（版本 ${solutionVersions.length}）</h4><div class="compare-item"><span class="key">场景</span><span class="val">${g2.medium.sceneName}</span></div><div class="compare-item"><span class="key">预算</span><span class="val">¥${g2.medium.budget}万</span></div><div class="compare-item"><span class="key">设备数</span><span class="val">${g2.medium.devices}台</span></div></div>`;
         }
+
+        // ===== 新增渲染函数 =====
+
+        function renderImplementationSteps(steps) {
+            if (!steps || !steps.length) return '';
+            let html = '<div class="card"><h3><span class="icon">📋</span> 实施路径规划</h3><div class="timeline">';
+            steps.forEach((s, i) => {
+                html += `<div class="phase">
+                    <div class="phase-header">
+                        <span class="phase-badge">阶段${i+1}</span>
+                        <span class="phase-name">${s.phase}</span>
+                        <span class="phase-duration">⏱ ${s.duration}</span>
+                    </div>
+                    <div class="tasks">`;
+                s.tasks.forEach(t => { html += `<div class="task">✅ ${t}</div>`; });
+                html += '</div></div>';
+            });
+            html += '</div></div>';
+            return html;
+        }
+
+        function renderDataFlow(dataFlow) {
+            if (!dataFlow) return '';
+            return `<div class="card"><h3><span class="icon">🔄</span> 数据流转架构</h3><div class="dataflow">${dataFlow.replace(/
+/g, '<br>')}</div></div>`;
+        }
+
+        function renderPlatformModules(modules) {
+            if (!modules || !modules.length) return '';
+            let html = '<div class="card"><h3><span class="icon">🧩</span> 平台功能模块</h3><div class="modules">';
+            modules.forEach(m => {
+                html += `<div class="module"><div class="module-name">${m.name}</div><div class="module-desc">${m.desc}</div></div>`;
+            });
+            html += '</div></div>';
+            return html;
+        }
+
+        function renderOptimizationTips(tips) {
+            if (!tips || !tips.length) return '';
+            let html = '<div class="card"><h3><span class="icon">💡</span> 实施优化建议</h3><ul class="tips-list">';
+            tips.forEach(t => { html += `<li>${t}</li>`; });
+            html += '</ul></div>';
+            return html;
+        }
+
+        function renderROI(roi) {
+            if (!roi) return '';
+            let html = '<div class="card"><h3><span class="icon">📈</span> 投资回报分析</h3>';
+            html += `<div class="roi-grid">
+                <div class="roi-item"><div class="roi-value">¥${(roi.totalInvest/10000).toFixed(0)}万</div><div class="roi-label">总投资</div></div>
+                <div class="roi-item"><div class="roi-value">¥${(roi.annualBenefit/10000).toFixed(1)}万</div><div class="roi-label">年综合收益</div></div>
+                <div class="roi-item"><div class="roi-value">${roi.paybackMonths}个月</div><div class="roi-label">回本周期</div></div>
+                <div class="roi-item"><div class="roi-value">${roi.threeYearROI}%</div><div class="roi-label">三年ROI</div></div>
+            </div>`;
+            if (roi.details && roi.details.length) {
+                html += '<table class="roi-table"><tr><th>收益项</th><th>金额</th><th>说明</th></tr>';
+                roi.details.forEach(d => {
+                    html += `<tr><td>${d.item}</td><td>${d.value}</td><td>${d.desc}</td></tr>`;
+                });
+                html += '</table>';
+            }
+            html += '</div>';
+            return html;
+        }
+
+        function renderSearchInsights(searchContentSummary) {
+            if (!searchContentSummary || searchContentSummary.length < 50) return '';
+            const summary = searchContentSummary.substring(0, 1500);
+            return `<div class="card search-insights"><h3><span class="icon">🌐</span> 联网搜索行业洞察</h3><div class="search-content">${summary.replace(/
+/g, '<br>')}</div></div>`;
+        }
+
+        function renderKbInsights(kbFiles, kbInsights) {
+            let html = '';
+            if (kbFiles && kbFiles.length) {
+                html += '<div class="card"><h3><span class="icon">📚</span> 资料库案例参考</h3>';
+                kbFiles.forEach(f => {
+                    html += `<div class="kb-file"><div class="kb-name">📄 ${f.name}</div>`;
+                    if (f.insights) { html += `<div class="kb-insights">${f.insights}</div>`; }
+                    html += '</div>';
+                });
+                html += '</div>';
+            }
+            if (kbInsights && kbInsights.length) {
+                html += '<div class="card"><h3><span class="icon">🔍</span> 资料库分析洞察</h3><ul>';
+                kbInsights.forEach(i => { html += `<li>${i}</li>`; });
+                html += '</ul></div>';
+            }
+            return html;
+        }
+
         function toggleCompare() { const p = document.getElementById('comparePanel'); p.classList.toggle('active'); if (solutionVersions.length < 2) showToast('请生成多个版本'); }
         function openEditModal() { document.getElementById('editBudget').value = document.getElementById('budget').value; document.getElementById('editDevices').value = document.getElementById('devices').value; document.getElementById('editModal').classList.add('active'); }
         function closeEditModal() { document.getElementById('editModal').classList.remove('active'); }
