@@ -826,7 +826,24 @@ const API = window.location.origin;
                 if (!['pdf','doc','docx','txt','xlsx','csv','json','md'].includes(ext)) { showToast('不支持: ' + file.name); continue; }
                 if (kbFiles.find(f => f.name === file.name)) { showToast('已存在: ' + file.name); continue; }
                 let content = '';
-                try { if (ext === 'json') { content = await file.text(); JSON.parse(content); } else if (['txt','md','csv'].includes(ext)) content = await file.text(); else content = `[${ext.toUpperCase()}] ${file.name}`; }
+                try {
+                    if (ext === 'json') { content = await file.text(); JSON.parse(content); }
+                    else if (['txt','md','csv'].includes(ext)) content = await file.text();
+                    else if (ext === 'pdf') {
+                        // 发送 PDF 到服务器提取文本
+                        const formData = new FormData();
+                        formData.append('file', file);
+                        const r = await fetch(API + '/api/extract-pdf', {
+                            method: 'POST',
+                            headers: { 'Authorization': 'Bearer '+authToken },
+                            body: formData
+                        });
+                        const data = await r.json();
+                        if (data.success && data.text) content = data.text;
+                        else content = `[PDF] ${file.name}`;
+                    }
+                    else content = `[${ext.toUpperCase()}] ${file.name}`;
+                }
                 catch { content = `[文件] ${file.name}`; }
                 const tags = extractTags(content, file.name);
                 kbFiles.push({ name: file.name, size: file.size, ext, content, tags });
@@ -846,7 +863,7 @@ const API = window.location.origin;
         function formatSize(b) { return b < 1024 ? b+'B' : b < 1048576 ? (b/1024).toFixed(1)+'KB' : (b/1048576).toFixed(1)+'MB'; }
         function extractTags(content, fileName) {
             const allTags = []; const text = (content + ' ' + fileName).toLowerCase();
-            const sk = { '工业':['工厂','产线','车间','制造','工业'], '农业':['农业','种植','灌溉','温室','大棚','土壤'], '家居':['家居','家庭','住宅'], '安防':['安防','监控','摄像头','门禁','消防'], '城市':['城市','市政','路灯','井盖','交通'], '物流':['物流','仓储','运输','配送','冷链'] };
+            const sk = { '工业':['工厂','产线','车间','制造','工业'], '农业':['农业','种植','灌溉','温室','大棚','土壤'], '水利':['水库','水利','雨水情','大坝','渗压','水位','流量','防洪','水文','堤防','河道','水闸','泵站'], '家居':['家居','家庭','住宅'], '安防':['安防','监控','摄像头','门禁','消防'], '城市':['城市','市政','路灯','井盖','交通'], '物流':['物流','仓储','运输','配送','冷链'], '环保':['环保','水质','污水','废气','噪声','生态'] };
             for (const [s, kws] of Object.entries(sk)) for (const kw of kws) if (text.includes(kw)) { allTags.push(s); break; }
             ['传感器','网关','MQTT','NB-IoT','LoRa','5G','边缘计算','AI','大数据','云平台','自动化','预警'].forEach(kw => { if (text.includes(kw.toLowerCase())) allTags.push(kw); });
             return [...new Set(allTags)].slice(0, 8);
@@ -1420,14 +1437,31 @@ function generateHardware(sceneData, devices, budget, searchContentSummary) {
         }
         function generateKbInsights() {
             if (!kbFiles.length) return null;
-            const insights = kbFiles.filter(f => f.tags?.length).map(f => ({ source: f.name, tags: f.tags, summary: f.content.substring(0, 200) }));
+            const insights = kbFiles.map(f => {
+                const content = f.content || '';
+                const hasRealContent = content.length > 100 && !content.startsWith('[');
+                return {
+                    source: f.name,
+                    tags: f.tags || [],
+                    summary: content.substring(0, 300),
+                    hasContent: hasRealContent,
+                    wordCount: content.length
+                };
+            });
             const allTags = [...new Set(kbFiles.flatMap(f => f.tags||[]))];
             const suggestions = [];
             if (allTags.includes('工业')) suggestions.push('参考资料建议：优先选用工业级防护设备（IP65+）。');
             if (allTags.includes('农业')) suggestions.push('参考资料建议：考虑农业场景供电困难，推荐太阳能方案。');
+            if (allTags.includes('水利')) suggestions.push('参考资料库中的水利行业标准方案，建议包含雨水情监测、大坝安全监测、四全管理等核心模块。');
             if (allTags.includes('传感器')) suggestions.push('根据资料中的传感器参数，已优先匹配高精度传感器。');
             if (allTags.includes('边缘计算')) suggestions.push('资料提及边缘计算，方案已集成边缘网关本地决策。');
             if (allTags.includes('预警')) suggestions.push('结合资料告警规则，已配置多级告警阈值。');
+            // 基于完整内容的定制建议
+            kbFiles.filter(f => f.content && f.content.length > 100 && !f.content.startsWith('[')).forEach(f => {
+                const c = f.content.toLowerCase();
+                if (c.includes('水库') || c.includes('水利')) suggestions.push('已参考《' + f.name + '》中的水利行业标准架构，包括雨水情监测、大坝安全监测等模块。');
+                if (c.includes('OneNET') || c.includes('云平台')) suggestions.push('已参考《' + f.name + '》中的云平台架构设计。');
+            });
             return { insights, customSuggestions: suggestions, allTags };
         }
         function getCommName(v) { return { 'auto':'智能推荐','nb-iot':'NB-IoT','lora':'LoRa','wifi':'WiFi','5g':'5G','zigbee':'ZigBee','bluetooth':'蓝牙BLE','ethernet':'以太网' }[v] || v; }

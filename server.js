@@ -334,6 +334,13 @@ async function fetchSceneData(scene, kbFiles = [], description = '') {
         }
     }
 
+    // 拼接搜索到的真实数据用于方案生成
+    let searchContentSummary = '';
+    if (searchSuccess && webContent.length > 200) {
+        // 提取前2000字符作为方案参考
+        searchContentSummary = webContent.substring(0, 3000);
+    }
+
     return {
         name: config.fallbackData.name,
         icon: config.fallbackData.icon,
@@ -345,6 +352,7 @@ async function fetchSceneData(scene, kbFiles = [], description = '') {
         desc,
         searchSuccess,
         searchResults: searchResults.slice(0, 2),
+        searchContentSummary,
         kbInsights,
         userInsights,
         dataFromSearch: searchSuccess
@@ -401,7 +409,19 @@ app.post('/api/knowledge/upload', authMiddleware, upload.single('file'), async (
         try {
             if (ext === 'json') { content = fs.readFileSync(filePath, 'utf8'); JSON.parse(content); }
             else if (['txt','md','csv'].includes(ext)) content = fs.readFileSync(filePath, 'utf8');
-            else content = `[${ext.toUpperCase()}] ${originalname}`;
+            else if (ext === 'pdf') {
+                const { execSync } = require('child_process');
+                try {
+                    const safePath = filePath.replace(/"/g, '\\"');
+                    content = execSync(
+                        'python3 -c "import sys; from pypdf import PdfReader; r=PdfReader(sys.argv[1]); print(chr(10).join(p.extract_text() for p in r.pages[:20]))" "' + safePath + '"',
+                        { timeout: 30000, maxBuffer: 10 * 1024 * 1024 }
+                    ).toString('utf8');
+                } catch(e) {
+                    console.log('PDF 文本提取失败:', e.message);
+                    content = `[${ext.toUpperCase()}] ${originalname}`;
+                }
+            } else content = `[${ext.toUpperCase()}] ${originalname}`;
         } catch { content = `[文件] ${originalname}`; }
         const tags = extractTags(content, originalname);
         const id = Date.now().toString();
@@ -412,6 +432,30 @@ app.post('/api/knowledge/upload', authMiddleware, upload.single('file'), async (
         );
         res.json({ id, name: originalname, size, type: ext, tags });
     } catch (e) { console.error('Upload error:', e); res.status(500).json({ error: '上传失败' }); }
+});
+
+
+// PDF 文本提取接口
+app.post('/api/extract-pdf', authMiddleware, upload.single('file'), async (req, res) => {
+    try {
+        if (!req.file) return res.status(400).json({ error: '未选择文件' });
+        const filePath = req.file.path;
+        const { execSync } = require('child_process');
+        try {
+            const safePath = filePath.replace(/"/g, '\\"');
+            const text = execSync(
+                'python3 -c "import sys; from pypdf import PdfReader; r=PdfReader(sys.argv[1]); print(chr(10).join(p.extract_text() for p in r.pages[:20]))" "' + safePath + '"',
+                { timeout: 30000, maxBuffer: 10 * 1024 * 1024 }
+            ).toString('utf8');
+            fs.unlinkSync(filePath); // 删除临时文件
+            res.json({ success: true, text: text.substring(0, 50000) });
+        } catch(e) {
+            fs.unlinkSync(filePath);
+            res.json({ success: false, error: e.message });
+        }
+    } catch(e) {
+        res.status(500).json({ error: '提取失败' });
+    }
 });
 
 app.get('/api/knowledge', authMiddleware, async (req, res) => {
