@@ -956,7 +956,7 @@ const API = window.location.origin;
             const btn = document.getElementById('btnGenerate');
             btn.classList.add('loading');
             showLoading();
-
+            try {
             const desc = document.getElementById('description').value;
             const budget = parseInt(document.getElementById('budget').value);
             const devices = parseInt(document.getElementById('devices').value);
@@ -1016,6 +1016,12 @@ const API = window.location.origin;
 
             btn.classList.remove('loading');
             showToast('三档方案生成成功！可在上方切换查看');
+            } catch(e) {
+                btn.classList.remove('loading');
+                hideLoading();
+                console.error('方案生成失败:', e);
+                showToast('生成失败: ' + e.message);
+            }
         }
 
         // 从后端获取场景数据（联网搜索 + 资料库）
@@ -1121,7 +1127,7 @@ function generateHardware(sceneData, devices, budget, searchContentSummary) {
             const parsed = parseSearchData(searchContentSummary);
             const scene = currentScene;
             // 根据搜索数据智能选型
-            let sensors = sceneData.sensors;
+            let sensors = [...sceneData.sensors]; // 深拷贝，避免修改原数组
             let gateway = sceneData.gateway;
             let commModel = currentScene.includes('industry') ? '5G工业模组' : 'NB-IoT通信模组';
             // 如果搜索数据中有真实设备型号，优先使用
