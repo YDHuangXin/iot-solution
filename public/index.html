@@ -1739,13 +1739,77 @@ function generateHardware(sceneData, devices, budget, searchContentSummary) {
         function exportWord() {
             if (!currentSolution) return;
             const s = currentSolution;
-            let content = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${s.sceneName} - ${s.level}</title><style>body{font-family:'Microsoft YaHei',sans-serif;line-height:1.8;color:#333;padding:40px}h1{color:#4f46e5;font-size:24px;border-bottom:3px solid #4f46e5;padding-bottom:10px}h2{color:#1e293b;font-size:18px;margin-top:30px;border-left:4px solid #4f46e5;padding-left:12px}table{width:100%;border-collapse:collapse;margin:16px 0}th{background:#f1f5f9;padding:10px;text-align:left;border:1px solid #e2e8f0;font-size:13px}td{padding:10px;border:1px solid #e2e8f0;font-size:13px}</style></head><body><h1>${s.sceneIcon} ${s.sceneName} — ${s.level}</h1><h2>一、项目概述</h2><p>${s.desc}</p><h2>二、硬件选型</h2><table><tr><th>类型</th><th>型号</th><th>参数</th><th>单价</th><th>数量</th></tr>${(s.hardware||[]).map(h=>`<tr><td>${h.type}</td><td>${h.model}</td><td>${h.params}</td><td>¥${h.price.toLocaleString()}</td><td>${h.qty}</td></tr>`).join('')}</table><h2>三、成本预算</h2><table><tr><th>项目</th><th>明细</th><th>金额</th><th>占比</th></tr>${s.cost.items.map(i=>`<tr><td>${i.name}</td><td>${i.detail}</td><td>¥${i.amount.toLocaleString()}</td><td>${i.percent}%</td></tr>`).join('')}</table>`;
-            if (s.implementationSteps) {
-                content += `<h2>四、实施计划</h2>${(s.implementationSteps||[]).map(p=>`<p><strong>${p.phase}（${p.duration}）：</strong>${p.tasks.join('、')}</p>`).join('')}`;
-            }
-            content += `<br><p style="text-align:center;color:#94a3b8;font-size:12px;">— AI智能物联网方案生成器 v3.0 —</p></body></html>`;
-            const blob = new Blob(['\ufeff'+content], { type: 'application/msword' });
-            const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = s.sceneName + '-' + s.level + '.doc'; a.click(); URL.revokeObjectURL(a.href);
+            const html = [
+                '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">',
+                '<head><meta charset="UTF-8">',
+                '<xml><w:WordDocument><w:View>Print</w:View></w:WordDocument></xml>',
+                '<style>',
+                '@page { margin: 2.54cm 3.18cm 2.54cm 3.18cm; }',
+                'body { font-family: "Microsoft YaHei", "SimSun", sans-serif; font-size: 14px; line-height: 1.8; color: #333; }',
+                'h1 { font-size: 22px; color: #4f46e5; text-align: center; margin-top: 0; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 3px solid #4f46e5; }',
+                'h2 { font-size: 16px; color: #1e293b; margin-top: 24px; margin-bottom: 12px; padding-left: 10px; border-left: 4px solid #4f46e5; page-break-after: avoid; }',
+                'h3 { font-size: 15px; color: #334155; margin-top: 16px; margin-bottom: 8px; }',
+                'p { margin: 8px 0; text-align: justify; }',
+                'table { width: 100%; border-collapse: collapse; margin: 12px 0; }',
+                'th { background: #f1f5f9; padding: 8px 10px; text-align: left; border: 1px solid #e2e8f0; font-size: 13px; font-weight: bold; }',
+                'td { padding: 8px 10px; border: 1px solid #e2e8f0; font-size: 13px; }',
+                'ul, ol { margin: 8px 0 8px 24px; padding: 0; }',
+                'li { margin-bottom: 4px; }',
+                '.footer { text-align: center; color: #94a3b8; font-size: 12px; margin-top: 30px; page-break-before: always; }',
+                '</style></head><body>',
+                // Title
+                `<h1>${s.sceneIcon} ${s.sceneName} — ${s.levelLabel}</h1>`,
+                // Overview
+                `<h2>一、项目概述</h2><p>${s.desc}</p>`,
+                // Key info
+                `<h2>二、项目关键信息</h2>`,
+                `<table><tr><th>设备规模</th><td>${s.devices} 台</td><th>项目预算</th><td>¥${s.budget}万</td></tr>`,
+                `<tr><th>通信方式</th><td>${s.communication}</td><th>云平台</th><td>${s.platform}</td></tr>`,
+                `<tr><th>核心功能</th><td colspan="3">${(s.features||[]).join('、')}</td></tr>`,
+                `<tr><th>主要协议</th><td colspan="3">${(s.protocols||[]).join(' / ')}</td></tr></table>`,
+                // Hardware
+                `<h2>三、硬件选型方案</h2>`,
+                `<table><tr><th>类型</th><th>型号</th><th>技术参数</th><th>单价</th><th>数量</th></tr>`,
+                (s.hardware||[]).map(h => `<tr><td>${h.type}</td><td>${h.model}</td><td>${h.params}</td><td>¥${h.price.toLocaleString()}</td><td>${h.qty}</td></tr>`).join(''),
+                `</table>`,
+                // Cost
+                `<h2>四、成本预算分析</h2>`,
+                `<table><tr><th>项目</th><th>明细</th><th>金额（元）</th><th>占比</th></tr>`,
+                (s.cost||{items:[]}).items.map(i => `<tr><td>${i.name}</td><td>${i.detail}</td><td>¥${i.amount.toLocaleString()}</td><td>${i.percent}%</td></tr>`).join(''),
+                `<tr><th colspan="2">总计</th><th>¥${(s.cost||{}).total?.toLocaleString()||'—'}</th><th>100%</th></tr>`,
+                `</table>`,
+                // Architecture
+                `<h2>五、系统架构设计</h2>`,
+                `<p><strong>感知层：</strong>${(s.sensors||[]).join('、')}</p>`,
+                `<p><strong>传输层：</strong>${s.gateway}，采用 ${(s.protocols||[]).join('、')} 协议</p>`,
+                `<p><strong>平台层：</strong>${s.platform}</p>`,
+                `<p><strong>应用层：</strong>${(s.features||[]).join('、')}</p>`,
+                // Data Flow
+                s.dataFlow ? `<h2>六、数据流转架构</h2><p>${s.dataFlow.replace(/\n/g, '<br>')}</p>` : '',
+                // Implementation
+                s.implementationSteps ? `<h2>${s.implementationSteps.length > 3 ? '六' : '六'}、实施计划</h2>` + (s.implementationSteps||[]).map(p => `<h3>${p.phase}（${p.duration}）</h3><ul>${p.tasks.map(t => `<li>${t}</li>`).join('')}</ul>`).join('') : '',
+                // Platform Modules
+                s.platformModules ? `<h2>七、云平台功能模块</h2>` + (s.platformModules||[]).map(m => `<p><strong>${m.name}：</strong>${m.desc}</p>`).join('') : '',
+                // Risks
+                s.risks ? `<h2>八、风险评估与应对</h2>` + (s.risks||[]).map(r => {
+                    const lvl = r.level === 'high' ? '【高】' : r.level === 'medium' ? '【中】' : '【低】';
+                    return `<p><strong>${lvl} ${r.title}</strong>：${r.desc}</p>`;
+                }).join('') : '',
+                // Optimization
+                s.optimizationTips ? `<h2>九、优化建议</h2><ul>` + (s.optimizationTips||[]).map(t => `<li>${t}</li>`).join('') + `</ul>` : '',
+                // Search Insights
+                s.searchContentSummary && s.searchContentSummary.length > 50 ? `<h2>十、行业参考数据</h2><p>本方案基于联网搜索的行业方案数据生成，参考设备包括：${(s.features||[]).slice(0,3).join('、')} 等。</p>` : '',
+                // Footer
+                `<div class="footer">— AI智能物联网方案生成器 v3.0 —<br>生成时间：${new Date().toLocaleString('zh-CN')}</div>`,
+                '</body></html>'
+            ].join('');
+
+            const blob = new Blob(['\ufeff' + html], { type: 'application/msword' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = s.sceneName + '-' + s.levelLabel + '.doc';
+            a.click();
+            URL.revokeObjectURL(a.href);
             showToast('Word文档已导出！');
         }
 </script>
