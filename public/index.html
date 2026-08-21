@@ -1514,7 +1514,7 @@ const API = window.location.origin;
 
         function renderDataFlow(dataFlow) {
             if (!dataFlow) return '';
-            return `<div class="card"><h3><span class="icon">🔄</span> 数据流转架构</h3><div class="dataflow">${dataFlow.split('\n').join('<br>')
+            return `<div class="card"><h3><span class="icon">🔄</span> 数据流转架构</h3><div class="dataflow">${dataFlow.split('\n').join('<br>')}</div></div>`;
         }
 
         function renderPlatformModules(modules) {
