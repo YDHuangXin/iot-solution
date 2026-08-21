@@ -1514,8 +1514,7 @@ const API = window.location.origin;
 
         function renderDataFlow(dataFlow) {
             if (!dataFlow) return '';
-            return `<div class="card"><h3><span class="icon">🔄</span> 数据流转架构</h3><div class="dataflow">${dataFlow.replace(/
-/g, '<br>')}</div></div>`;
+            return `<div class="card"><h3><span class="icon">🔄</span> 数据流转架构</h3><div class="dataflow">${dataFlow.split('\n').join('<br>')
         }
 
         function renderPlatformModules(modules) {
@@ -1559,8 +1558,7 @@ const API = window.location.origin;
         function renderSearchInsights(searchContentSummary) {
             if (!searchContentSummary || searchContentSummary.length < 50) return '';
             const summary = searchContentSummary.substring(0, 1500);
-            return `<div class="card search-insights"><h3><span class="icon">🌐</span> 联网搜索行业洞察</h3><div class="search-content">${summary.replace(/
-/g, '<br>')}</div></div>`;
+            return `<div class="card search-insights"><h3><span class="icon">🌐</span> 联网搜索行业洞察</h3><div class="search-content">${summary.split('\n').join('<br>')}</div></div>`;
         }
 
         function renderKbInsights(kbFiles, kbInsights) {
