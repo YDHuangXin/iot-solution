@@ -1147,8 +1147,13 @@ function generateHardware(sceneData, devices, budget, searchContentSummary) {
             let sensors = (sceneData.sensors && sceneData.sensors.length > 0) ? [...sceneData.sensors] : getDefaultSceneData(currentScene).sensors; // 深拷贝+兜底
             let gateway = sceneData.gateway || getDefaultSceneData(scene).gateway;
             let commModel = currentScene.includes('industry') ? '5G工业模组' : 'NB-IoT通信模组';
-            // 如果搜索数据中有真实设备型号，优先使用
-            if (parsed.devices.length > 0) {
+            // 优先使用知识库中的设备型号，其次使用搜索数据
+            if (kbInfo.sensors.length > 0) {
+                // 从知识库提取的设备型号优先
+                for (let i = 0; i < Math.min(kbInfo.sensors.length, 3); i++) {
+                    if (i < sensors.length) sensors[i] = kbInfo.sensors[i];
+                }
+            } else if (parsed.devices.length > 0) {
                 const deviceMap = {};
                 parsed.devices.forEach(d => {
                     const dl = d.toLowerCase();
@@ -1259,7 +1264,9 @@ function generateHardware(sceneData, devices, budget, searchContentSummary) {
         }
         function generateImplementationSteps(sceneData, level, searchContentSummary) {
             const parsed = parseSearchData(searchContentSummary);
+            const kbInfo = extractKBInfo(kbFiles, currentScene);
             const hasSearch = parsed.devices && parsed.devices.length > 0;
+            const hasKB = kbInfo.sensors && kbInfo.sensors.length > 0;
             const searchRef = hasSearch ? '（参考行业方案：' + parsed.devices.slice(0,3).join('、') + '等）' : '';
             if (level === 'simple') {
                 return [
@@ -1276,10 +1283,11 @@ function generateHardware(sceneData, devices, budget, searchContentSummary) {
                     { phase: '第四阶段：业务上线与运维交接', duration: '1-2周', tasks: ['用户培训与操作手册交付', '试运行与问题修复', '运维体系建立与交接', '项目验收与文档归档'] }
                 ];
             } else {
+                const kbTasks = hasKB ? ['参考《' + (kbFiles[0]?.name || '知识库') + '》中的' + kbInfo.sensors.slice(0,3).join('、') + '等设备部署方案', '借鉴行业标准项目的实施经验和验收标准'] : [];
                 const searchTasks2 = hasSearch ? ['调研' + parsed.devices.join('、') + '等设备在实际项目中的应用案例', '对比行业标准方案进行设备选型'] : [];
                 const protocolRef = parsed.protocols.length > 0 ? '（优先采用' + parsed.protocols.slice(0,3).join('/') + '协议）' : '';
                 return [
-                    { phase: '第一阶段：深度需求调研与可行性分析', duration: '2-4周', tasks: ['业务场景深度调研与利益相关方访谈', '现有系统架构评估与技术债务梳理', '网络环境与通信覆盖全面勘测', '多厂商设备选型对比与POC验证', ...searchTasks2, '技术可行性分析与风险评估报告', '整体方案架构设计与专家评审'] },
+                    { phase: '第一阶段：深度需求调研与可行性分析', duration: '2-4周', tasks: ['业务场景深度调研与利益相关方访谈', '现有系统架构评估与技术债务梳理', '网络环境与通信覆盖全面勘测', '多厂商设备选型对比与POC验证', ...searchTasks2, ...kbTasks, '技术可行性分析与风险评估报告', '整体方案架构设计与专家评审'] },
                     { phase: '第二阶段：基础设施部署与网络建设', duration: '4-6周', tasks: ['传感器规模化布点与安装施工', '工业级边缘网关部署与高可用配置', '通信网络建设与信号调优' + protocolRef, '边缘计算节点集群部署与负载均衡', '设备入网认证与协议适配层开发', '网络安全策略实施（防火墙/VLAN/ACL）'] },
                     { phase: '第三阶段：平台架构搭建与系统集成', duration: '3-5周', tasks: ['IoT平台部署与多租户架构配置', '设备全生命周期管理模块上线', '数据采集管道搭建与流处理引擎部署', '规则引擎与自动化工作流开发', 'AI/ML分析模型训练与部署', '第三方系统（ERP/MES/CRM）API集成', '统一身份认证与权限管理体系建立'] },
                     { phase: '第四阶段：业务应用开发与联调测试', duration: '3-4周', tasks: ['可视化大屏与多端应用开发', '数字孪生建模与实时映射', '业务流程自动化编排与测试', '全链路压测与性能调优', '安全渗透测试与漏洞修复', '用户UAT验收测试'] },
@@ -1290,7 +1298,9 @@ function generateHardware(sceneData, devices, budget, searchContentSummary) {
         }
         function generateDataFlow(sceneData, level, searchContentSummary) {
             const parsed = parseSearchData(searchContentSummary);
+            const kbInfo = extractKBInfo(kbFiles, currentScene);
             const hasSearch = parsed.devices && parsed.devices.length > 0;
+            const hasKB = kbInfo.sensors && kbInfo.sensors.length > 0;
             const deviceRef = hasSearch ? '（行业常用设备：' + parsed.devices.slice(0,3).join('、') + '）' : '';
             const protocolRef = parsed.protocols.length > 0 ? parsed.protocols.join(' / ') : (sceneData.protocols||['Modbus','MQTT']).join(' / ');
             if (level === 'simple') {
@@ -1327,7 +1337,9 @@ function generateHardware(sceneData, devices, budget, searchContentSummary) {
         }
         function generatePlatformModules(sceneData, level, searchContentSummary) {
             const parsed = parseSearchData(searchContentSummary);
+            const kbInfo = extractKBInfo(kbFiles, currentScene);
             const hasSearch = parsed.devices && parsed.devices.length > 0;
+            const hasKB = kbInfo.features && kbInfo.features.length > 0;
             const platformRef = parsed.platforms.length > 0 ? '（参考行业方案：' + parsed.platforms.slice(0,2).join('、') + '）' : '';
             if (level === 'simple') {
                 return [
@@ -1355,12 +1367,14 @@ function generateHardware(sceneData, devices, budget, searchContentSummary) {
                     { name: '全链路安全与合规', desc: '构建端到端安全体系：设备端（安全启动/固件签名验证/硬件加密芯片/防篡改）、传输层（TLS 1.3/双向证书认证/数据完整性校验）、平台层（RBAC权限模型/细粒度访问控制/操作审计日志/数据脱敏/加密存储），全面符合等保2.0三级要求。' },
                     { name: '智能运维与监控中心', desc: '构建统一运维管理中心，实现设备健康评分、故障根因分析、容量规划预警、自动化巡检、工单流转闭环、SLA监控，支持 Prometheus + Grafana 技术栈集成，提供7×24小时多渠道告警通知。' },
                     ...(searchModule ? [searchModule] : []),
+                    ...(hasKB && kbInfo.features.length > 0 ? [{ name: '行业特色功能模块', desc: '基于知识库《' + kbFiles[0].name + '》中的行业标准方案，内置' + kbInfo.features.slice(0, 5).join('、') + '等行业特色功能模块，提供行业专属模板和参数配置。' }] : []),
                     { name: '开放API生态与第三方集成', desc: '提供RESTful API、WebSocket实时推送、gRPC高性能调用、Webhook事件订阅等标准化开放接口，支持与ERP/MES/CRM/OA/财务等第三方系统深度集成，支持OAuth 2.0/SAML/LDAP单点登录，提供多语言SDK（Java/Python/Go/Node.js/C#）和完整的API文档中心。' }
                 ];
             }
         }
         function generateOptimizationTips(sceneData, level, searchContentSummary, kbFiles) {
             const parsed = parseSearchData(searchContentSummary);
+            const kbInfo = extractKBInfo(kbFiles, currentScene);
             const hasSearch = parsed.devices && parsed.devices.length > 0;
             const hasKB = kbFiles && kbFiles.length > 0;
             const searchRef = hasSearch ? '基于联网搜索的行业方案调研，' : '';
@@ -1375,7 +1389,7 @@ function generateHardware(sceneData, devices, budget, searchContentSummary) {
                 ];
             } else if (level === 'medium') {
                 const searchTips = hasSearch ? ['根据行业方案调研，优先选用' + parsed.devices.slice(0,2).join('、') + '等成熟设备型号，降低项目风险。'] : [];
-                const kbTips2 = hasKB ? kbFiles.filter(f => f.content && f.content.length > 50).map(f => '参考资料库《' + f.name + '》，建议：' + f.content.substring(0, 80) + '...') : [];
+                const kbTips2 = hasKB ? kbFiles.filter(f => f.content && f.content.length > 50 && !f.content.startsWith('[')).map(f => '参考资料库《' + f.name + '》行业方案，建议：' + f.content.substring(0, 120) + '...') : [];
                 return [
                     '分阶段部署：建议先选择1-2个典型场景进行小规模POC验证，验证技术可行性和业务价值后再批量推广，有效降低项目风险。',
                     '标准化选型：优先选用支持MQTT、CoAP、HTTP等标准协议的设备，避免厂商锁定，提高系统兼容性和后期扩展能力。',
@@ -1389,7 +1403,7 @@ function generateHardware(sceneData, devices, budget, searchContentSummary) {
             } else {
                 const searchTips2 = hasSearch ? ['根据行业方案调研，推荐采用' + parsed.devices.slice(0,3).join('、') + '等设备组合，参考行业最佳实践进行架构设计。'] : [];
                 const protocolTips = parsed.protocols.length > 0 ? '建议优先采用' + parsed.protocols.slice(0,3).join('/') + '协议，符合行业主流标准。' : '';
-                const kbTips3 = hasKB ? kbFiles.filter(f => f.content && f.content.length > 50).map(f => '参考资料库《' + f.name + '》：' + f.content.substring(0, 100) + '...') : [];
+                const kbTips3 = hasKB ? kbFiles.filter(f => f.content && f.content.length > 50 && !f.content.startsWith('[')).map(f => '参考资料库《' + f.name + '》行业标准方案：' + f.content.substring(0, 150) + '...') : [];
                 return [
                     '分阶段部署：建议先选择2-3个典型场景进行小规模POC验证，验证技术可行性和业务价值后再批量推广，有效降低项目风险。',
                     '标准化选型：优先选用支持MQTT、CoAP、HTTP等标准协议的设备，避免厂商锁定，提高系统兼容性和后期扩展能力。',
@@ -1435,6 +1449,43 @@ function generateHardware(sceneData, devices, budget, searchContentSummary) {
                 ]
             };
         }
+        
+        // 从知识库内容中提取结构化信息
+        function extractKBInfo(kbFiles, scene) {
+            const info = { sensors: [], platforms: [], protocols: [], features: [], architecture: [], implementation: [] };
+            if (!kbFiles || !kbFiles.length) return info;
+            
+            // 合并所有知识库内容
+            const allContent = kbFiles.filter(f => f.content && f.content.length > 100 && !f.content.startsWith('['))
+                .map(f => f.content).join('\n').toLowerCase();
+            if (!allContent) return info;
+            
+            // 从知识库提取传感器/设备
+            const sensorPatterns = [
+                /([\w-]*(?:传感器|计|仪|表|监测仪|摄像机|摄像头|雨量计|水位计|流量计|渗压计|墒情仪)[\w-]*)/gi,
+                /(GNSS|RTU|遥测终端|雷达流速|多普勒|量水堰|土壤墒情|白蚁监测|电子界桩)/gi
+            ];
+            sensorPatterns.forEach(p => {
+                const matches = allContent.match(p);
+                if (matches) matches.forEach(m => { if (m.length > 1 && !info.sensors.includes(m)) info.sensors.push(m); });
+            });
+            info.sensors = info.sensors.slice(0, 8);
+            
+            // 从知识库提取通信协议
+            const protoKws = ['NB-IoT','4G','5G','LoRa','WiFi','MQTT','Modbus','OPC-UA','CoAP','BACnet','HTTP','RS485','以太网','Cat.1','RedCap'];
+            protoKws.forEach(kw => { if (allContent.includes(kw.toLowerCase()) && !info.protocols.includes(kw)) info.protocols.push(kw); });
+            
+            // 从知识库提取平台/功能
+            const platformKws = ['OneNET','数字孪生','四全管理','四预措施','四制体系','四管工作','雨水情监测','大坝安全监测','生态流量','视频监控','巡检管理','白蚁监测','移动应用','会商中心','领导驾驶舱','数据分析','AI分析','预警'];
+            platformKws.forEach(kw => { if (allContent.includes(kw.toLowerCase()) && !info.features.includes(kw)) info.features.push(kw); });
+            
+            // 从知识库提取架构关键词
+            const archKws = ['感知层','传输层','网络层','平台层','应用层','终端','云网','边缘计算','RTU','遥测终端'];
+            archKws.forEach(kw => { if (allContent.includes(kw) && !info.architecture.includes(kw)) info.architecture.push(kw); });
+            
+            return info;
+        }
+
         function generateKbInsights() {
             if (!kbFiles.length) return null;
             const insights = kbFiles.map(f => {
