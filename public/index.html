@@ -1079,12 +1079,12 @@ const API = window.location.origin;
                 cloud,
                 description: desc,
                 hardware, cost, risks,
-                platform: sceneData.platform,
-                features: sceneData.features,
-                protocols: sceneData.protocols,
-                desc: sceneData.desc,
-                sensors: sceneData.sensors,
-                gateway: sceneData.gateway,
+                platform: sceneData.platform || getDefaultSceneData(currentScene).platform,
+                features: sceneData.features || getDefaultSceneData(currentScene).features,
+                protocols: sceneData.protocols || getDefaultSceneData(currentScene).protocols,
+                desc: sceneData.desc || getDefaultSceneData(currentScene).desc,
+                sensors: sceneData.sensors || getDefaultSceneData(currentScene).sensors,
+                gateway: sceneData.gateway || getDefaultSceneData(currentScene).gateway,
                 kbFiles: [...kbFiles],
                 kbInsights,
                 dataFromSearch: sceneData.searchSuccess || false
@@ -1127,8 +1127,8 @@ function generateHardware(sceneData, devices, budget, searchContentSummary) {
             const parsed = parseSearchData(searchContentSummary);
             const scene = currentScene;
             // 根据搜索数据智能选型
-            let sensors = [...sceneData.sensors]; // 深拷贝，避免修改原数组
-            let gateway = sceneData.gateway;
+            let sensors = (sceneData.sensors && sceneData.sensors.length > 0) ? [...sceneData.sensors] : getDefaultSceneData(currentScene).sensors; // 深拷贝+兜底
+            let gateway = sceneData.gateway || getDefaultSceneData(scene).gateway;
             let commModel = currentScene.includes('industry') ? '5G工业模组' : 'NB-IoT通信模组';
             // 如果搜索数据中有真实设备型号，优先使用
             if (parsed.devices.length > 0) {
@@ -1275,7 +1275,7 @@ function generateHardware(sceneData, devices, budget, searchContentSummary) {
             const parsed = parseSearchData(searchContentSummary);
             const hasSearch = parsed.devices && parsed.devices.length > 0;
             const deviceRef = hasSearch ? '（行业常用设备：' + parsed.devices.slice(0,3).join('、') + '）' : '';
-            const protocolRef = parsed.protocols.length > 0 ? parsed.protocols.join(' / ') : sceneData.protocols.join(' / ');
+            const protocolRef = parsed.protocols.length > 0 ? parsed.protocols.join(' / ') : (sceneData.protocols||['Modbus','MQTT']).join(' / ');
             if (level === 'simple') {
                 return `1. 数据采集：${sceneData.sensors[0]}等设备实时采集环境数据${deviceRef}，采样周期5-10分钟。
 
@@ -1491,7 +1491,7 @@ function generateHardware(sceneData, devices, budget, searchContentSummary) {
                     <div class="info-card"><div class="label">项目预算</div><div class="value">¥${s.budget}万</div></div>
                     <div class="info-card"><div class="label">通信方式</div><div class="value">${getCommName(s.communication)}</div></div>
                     <div class="info-card"><div class="label">云平台</div><div class="value">${s.platform}</div></div>
-                    <div class="info-card"><div class="label">核心功能</div><div class="value">${s.features.length} 项</div></div>`;
+                    <div class="info-card"><div class="label">核心功能</div><div class="value">${(s.features && s.features.length) ? s.features.length : 0} 项</div></div>`;
             }
 
             let html = `<p>${s.desc}</p>`;
@@ -1536,22 +1536,22 @@ function generateHardware(sceneData, devices, budget, searchContentSummary) {
             const isComplex = s.level === 'complex';
             if (isSimple) {
                 document.getElementById('archDiagram').innerHTML = `
-                    <div class="arch-layer cloud">☁️ 云平台 — ${s.platform}<div class="arch-nodes">${s.features.slice(0,3).map(f=>`<span class="arch-node">${f}</span>`).join('')}</div></div>
+                    <div class="arch-layer cloud">☁️ 云平台 — ${s.platform}<div class="arch-nodes">${(s.features||[]).slice(0,3).map(f=>`<span class="arch-node">${f}</span>`).join('')}</div></div>
                     <div class="arch-arrow">↕️ 数据通信</div>
                     <div class="arch-layer device">📡 ${s.gateway}<div class="arch-nodes"><span class="arch-node">协议转换</span><span class="arch-node">数据转发</span></div></div>
-                    <div class="arch-arrow">↕️ ${s.protocols[0]}</div>
-                    <div class="arch-layer sensor">📟 感知层<div class="arch-nodes">${s.sensors.slice(0,3).map(x=>`<span class="arch-node">${x}</span>`).join('')}</div></div>`;
+                    <div class="arch-arrow">↕️ ${(s.protocols && (s.protocols||["MQTT"])[0]) || 'MQTT'}</div>
+                    <div class="arch-layer sensor">📟 感知层<div class="arch-nodes">${(s.sensors||[]).slice(0,3).map(x=>`<span class="arch-node">${x}</span>`).join('')}</div></div>`;
             } else {
                 document.getElementById('archDiagram').innerHTML = `
-                    <div class="arch-layer cloud">☁️ 应用层 — ${s.platform}<div class="arch-nodes">${s.features.map(f=>`<span class="arch-node">${f}</span>`).join('')}</div></div>
+                    <div class="arch-layer cloud">☁️ 应用层 — ${s.platform}<div class="arch-nodes">${(s.features||[]).map(f=>`<span class="arch-node">${f}</span>`).join('')}</div></div>
                     <div class="arch-arrow">↕️ MQTT / HTTPS</div>
                     <div class="arch-layer platform">🖥️ 平台层 — 数据中台 + AI分析<div class="arch-nodes"><span class="arch-node">设备管理</span><span class="arch-node">规则引擎</span><span class="arch-node">数据存储</span>${isComplex?'<span class="arch-node">AI推理</span>':''}</div></div>
                     <div class="arch-arrow">↕️ 数据汇聚</div>
-                    <div class="arch-layer network">📡 网络层 — ${getCommName(s.communication)} + ${s.protocols[0]}<div class="arch-nodes"><span class="arch-node">数据转发</span><span class="arch-node">协议转换</span><span class="arch-node">边缘计算</span></div></div>
+                    <div class="arch-layer network">📡 网络层 — ${getCommName(s.communication)} + ${(s.protocols && (s.protocols||["MQTT"])[0]) || 'MQTT'}<div class="arch-nodes"><span class="arch-node">数据转发</span><span class="arch-node">协议转换</span><span class="arch-node">边缘计算</span></div></div>
                     <div class="arch-arrow">↕️ ${s.protocols.join(' / ')}</div>
                     <div class="arch-layer device">🔌 边缘层 — ${s.gateway}<div class="arch-nodes"><span class="arch-node">数据预处理</span><span class="arch-node">本地缓存</span><span class="arch-node">断网续传</span></div></div>
                     <div class="arch-arrow">↕️ 传感数据</div>
-                    <div class="arch-layer sensor">📟 感知层<div class="arch-nodes">${s.sensors.map(x=>`<span class="arch-node">${x}</span>`).join('')}</div></div>`;
+                    <div class="arch-layer sensor">📟 感知层<div class="arch-nodes">${(s.sensors||[]).map(x=>`<span class="arch-node">${x}</span>`).join('')}</div></div>`;
             }
             document.getElementById('dataFlow').innerHTML = s.dataFlow ? s.dataFlow.split('\n').map(l => `<p>${l}</p>`).join('') : `<p><strong>1. 数据采集</strong>：传感器实时采集数据上报至边缘网关。</p><p><strong>2. 边缘处理</strong>：${s.gateway}进行数据过滤、聚合、协议转换。</p><p><strong>3. 数据传输</strong>：经${getCommName(s.communication)}加密上传至云平台。</p><p><strong>4. 云端分析</strong>：${s.platform}进行存储、分析、可视化。</p><p><strong>5. 指令下发</strong>：平台生成控制指令实现闭环控制。</p>`;
         }
@@ -1584,7 +1584,7 @@ function generateHardware(sceneData, devices, budget, searchContentSummary) {
                     <div class="info-card"><div class="label">可用性</div><div class="value">99.95% SLA</div></div>`;
             }
             if (s.platformModules && s.platformModules.length) {
-                document.getElementById('platformModules').innerHTML = s.platformModules.map(m => `<p><strong>${m.name}：</strong>${m.desc}</p>`).join('');
+                document.getElementById('platformModules').innerHTML = (s.platformModules||[]).map(m => `<p><strong>${m.name}：</strong>${m.desc}</p>`).join('');
             } else {
                 document.getElementById('platformModules').innerHTML = `<p><strong>核心功能模块：</strong></p><ul style="margin-top:8px;padding-left:20px;line-height:2;"><li><strong>设备管理：</strong>注册、OTA升级、状态监控</li><li><strong>数据服务：</strong>实时流处理、历史查询、导出</li><li><strong>规则引擎：</strong>可视化编排、告警触发、联动</li><li><strong>AI分析：</strong>异常检测、趋势预测</li><li><strong>可视化大屏：</strong>GIS地图、实时看板</li><li><strong>开放能力：</strong>SDK/API、Webhook</li></ul>`;
             }
@@ -1625,8 +1625,8 @@ function generateHardware(sceneData, devices, budget, searchContentSummary) {
             const btn = document.getElementById('kbTabBtn');
             if (!insights || !insights.insights?.length) { btn.style.display = 'none'; return; }
             btn.style.display = '';
-            document.getElementById('kbRefContent').innerHTML = `<div class="kb-ref-title">📚 参考资料引用</div>${insights.insights.map(i => `<div class="kb-ref-item"><div class="ref-source">📄 ${i.source} · 标签：${i.tags.join(' / ')}</div><div>${i.summary}</div></div>`).join('')}`;
-            document.getElementById('kbAnalysis').innerHTML = `<p>已读取 <strong>${kbFiles.length}</strong> 份资料，提取 <strong>${insights.allTags.length}</strong> 个特征标签。</p><div class="kb-tag-list" style="margin-top:8px;">${insights.allTags.map(t=>`<span class="kb-tag">${t}</span>`).join('')}</div><br><p><strong>定制建议：</strong></p><ul style="margin-top:8px;padding-left:20px;line-height:2;">${insights.customSuggestions.map(s=>`<li>${s}</li>`).join('')}</ul>`;
+            document.getElementById('kbRefContent').innerHTML = `<div class="kb-ref-title">📚 参考资料引用</div>${(insights.insights||[]).map(i => `<div class="kb-ref-item"><div class="ref-source">📄 ${i.source} · 标签：${i.tags.join(' / ')}</div><div>${i.summary}</div></div>`).join('')}`;
+            document.getElementById('kbAnalysis').innerHTML = `<p>已读取 <strong>${kbFiles.length}</strong> 份资料，提取 <strong>${(insights.allTags||[]).length}</strong> 个特征标签。</p><div class="kb-tag-list" style="margin-top:8px;">${(insights.allTags||[]).map(t=>`<span class="kb-tag">${t}</span>`).join('')}</div><br><p><strong>定制建议：</strong></p><ul style="margin-top:8px;padding-left:20px;line-height:2;">${(insights.customSuggestions||[]).map(s=>`<li>${s}</li>`).join('')}</ul>`;
         }
         function renderCompare() {
             const panel = document.getElementById('comparePanel');
@@ -1739,9 +1739,9 @@ function generateHardware(sceneData, devices, budget, searchContentSummary) {
         function exportWord() {
             if (!currentSolution) return;
             const s = currentSolution;
-            let content = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${s.sceneName} - ${s.level}</title><style>body{font-family:'Microsoft YaHei',sans-serif;line-height:1.8;color:#333;padding:40px}h1{color:#4f46e5;font-size:24px;border-bottom:3px solid #4f46e5;padding-bottom:10px}h2{color:#1e293b;font-size:18px;margin-top:30px;border-left:4px solid #4f46e5;padding-left:12px}table{width:100%;border-collapse:collapse;margin:16px 0}th{background:#f1f5f9;padding:10px;text-align:left;border:1px solid #e2e8f0;font-size:13px}td{padding:10px;border:1px solid #e2e8f0;font-size:13px}</style></head><body><h1>${s.sceneIcon} ${s.sceneName} — ${s.level}</h1><h2>一、项目概述</h2><p>${s.desc}</p><h2>二、硬件选型</h2><table><tr><th>类型</th><th>型号</th><th>参数</th><th>单价</th><th>数量</th></tr>${s.hardware.map(h=>`<tr><td>${h.type}</td><td>${h.model}</td><td>${h.params}</td><td>¥${h.price.toLocaleString()}</td><td>${h.qty}</td></tr>`).join('')}</table><h2>三、成本预算</h2><table><tr><th>项目</th><th>明细</th><th>金额</th><th>占比</th></tr>${s.cost.items.map(i=>`<tr><td>${i.name}</td><td>${i.detail}</td><td>¥${i.amount.toLocaleString()}</td><td>${i.percent}%</td></tr>`).join('')}</table>`;
+            let content = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${s.sceneName} - ${s.level}</title><style>body{font-family:'Microsoft YaHei',sans-serif;line-height:1.8;color:#333;padding:40px}h1{color:#4f46e5;font-size:24px;border-bottom:3px solid #4f46e5;padding-bottom:10px}h2{color:#1e293b;font-size:18px;margin-top:30px;border-left:4px solid #4f46e5;padding-left:12px}table{width:100%;border-collapse:collapse;margin:16px 0}th{background:#f1f5f9;padding:10px;text-align:left;border:1px solid #e2e8f0;font-size:13px}td{padding:10px;border:1px solid #e2e8f0;font-size:13px}</style></head><body><h1>${s.sceneIcon} ${s.sceneName} — ${s.level}</h1><h2>一、项目概述</h2><p>${s.desc}</p><h2>二、硬件选型</h2><table><tr><th>类型</th><th>型号</th><th>参数</th><th>单价</th><th>数量</th></tr>${(s.hardware||[]).map(h=>`<tr><td>${h.type}</td><td>${h.model}</td><td>${h.params}</td><td>¥${h.price.toLocaleString()}</td><td>${h.qty}</td></tr>`).join('')}</table><h2>三、成本预算</h2><table><tr><th>项目</th><th>明细</th><th>金额</th><th>占比</th></tr>${s.cost.items.map(i=>`<tr><td>${i.name}</td><td>${i.detail}</td><td>¥${i.amount.toLocaleString()}</td><td>${i.percent}%</td></tr>`).join('')}</table>`;
             if (s.implementationSteps) {
-                content += `<h2>四、实施计划</h2>${s.implementationSteps.map(p=>`<p><strong>${p.phase}（${p.duration}）：</strong>${p.tasks.join('、')}</p>`).join('')}`;
+                content += `<h2>四、实施计划</h2>${(s.implementationSteps||[]).map(p=>`<p><strong>${p.phase}（${p.duration}）：</strong>${p.tasks.join('、')}</p>`).join('')}`;
             }
             content += `<br><p style="text-align:center;color:#94a3b8;font-size:12px;">— AI智能物联网方案生成器 v3.0 —</p></body></html>`;
             const blob = new Blob(['\ufeff'+content], { type: 'application/msword' });
