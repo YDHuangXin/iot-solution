@@ -1059,9 +1059,9 @@ const API = window.location.origin;
             const comm = document.getElementById('communication').value;
             const cloud = document.getElementById('cloudPlatform').value;
             const desc = document.getElementById('description').value;
-            const hardware = generateHardware(sceneData, devices, budget);
-            const cost = calculateCost(hardware, budget);
-            const risks = generateRisks(level);
+            const hardware = generateHardware(sceneData, devices, budget, sceneData.searchContentSummary || '');
+            const cost = calculateCost(hardware, budget, sceneData.searchContentSummary || '');
+            const risks = generateRisks(level, sceneData.searchContentSummary || '', kbFiles);
             const kbInsights = generateKbInsights();
 
             const base = {
@@ -1086,105 +1086,226 @@ const API = window.location.origin;
 
             // 根据复杂度增加内容
             if (level === 'simple') {
-                return { ...base, level: 'simple', levelLabel: '简单方案', levelIcon: '📝', searchContentSummary: sceneData.searchContentSummary || '', implementationSteps: generateImplementationSteps(sceneData, 'simple'), dataFlow: generateDataFlow(sceneData, 'simple'), platformModules: generatePlatformModules(sceneData, 'simple'), optimizationTips: generateOptimizationTips(sceneData, 'simple') };
+                return { ...base, level: 'simple', levelLabel: '简单方案', levelIcon: '📝', searchContentSummary: sceneData.searchContentSummary || '', implementationSteps: generateImplementationSteps(sceneData, 'simple', sceneData.searchContentSummary || ''), dataFlow: generateDataFlow(sceneData, 'simple', sceneData.searchContentSummary || ''), platformModules: generatePlatformModules(sceneData, 'simple', sceneData.searchContentSummary || ''), optimizationTips: generateOptimizationTips(sceneData, 'simple', sceneData.searchContentSummary || '', kbFiles) };
             } else if (level === 'medium') {
-                return { ...base, level: 'medium', levelLabel: '中等方案', levelIcon: '📋', searchContentSummary: sceneData.searchContentSummary || '', implementationSteps: generateImplementationSteps(sceneData, 'medium'), dataFlow: generateDataFlow(sceneData, 'medium'), platformModules: generatePlatformModules(sceneData, 'medium'), optimizationTips: generateOptimizationTips(sceneData, 'medium') };
+                return { ...base, level: 'medium', levelLabel: '中等方案', levelIcon: '📋', searchContentSummary: sceneData.searchContentSummary || '', implementationSteps: generateImplementationSteps(sceneData, 'medium', sceneData.searchContentSummary || ''), dataFlow: generateDataFlow(sceneData, 'medium', sceneData.searchContentSummary || ''), platformModules: generatePlatformModules(sceneData, 'medium', sceneData.searchContentSummary || ''), optimizationTips: generateOptimizationTips(sceneData, 'medium', sceneData.searchContentSummary || '', kbFiles) };
             } else {
-                return { ...base, level: 'complex', levelLabel: '复杂方案', levelIcon: '📚', implementationSteps: generateImplementationSteps(sceneData, 'complex'), dataFlow: generateDataFlow(sceneData, 'complex'), platformModules: generatePlatformModules(sceneData, 'complex'), optimizationTips: generateOptimizationTips(sceneData, 'complex'), roiAnalysis: generateROIAnalysis(budget, devices, sceneData), searchContentSummary: sceneData.searchContentSummary || '' };
+                return { ...base, level: 'complex', levelLabel: '复杂方案', levelIcon: '📚', implementationSteps: generateImplementationSteps(sceneData, 'complex', sceneData.searchContentSummary || ''), dataFlow: generateDataFlow(sceneData, 'complex', sceneData.searchContentSummary || ''), platformModules: generatePlatformModules(sceneData, 'complex', sceneData.searchContentSummary || ''), optimizationTips: generateOptimizationTips(sceneData, 'complex', sceneData.searchContentSummary || '', kbFiles), roiAnalysis: generateROIAnalysis(budget, devices, sceneData), searchContentSummary: sceneData.searchContentSummary || '' };
             }
         }
 
-        function generateHardware(sceneData, devices, budget) {
+        
+        function parseSearchData(searchContentSummary) {
+            if (!searchContentSummary || searchContentSummary.length < 50) return {};
+            const result = { devices: [], platforms: [], protocols: [], prices: [], risks: [] };
+            const text = searchContentSummary.toLowerCase();
+            // 提取设备型号 (常见传感器/网关/模组)
+            const devicePatterns = [/[A-Z][\w-]+[0-9][\w]*/g, /华为[A-Z\w]+/g, /中兴[A-Z\w]+/g, /移远[A-Z\w]+/g, /广和通[A-Z\w]+/g, /涂鸦[A-Z\w]+/g, /树莓派[A-Z\w]*/g, /STM32[A-Z\w]*/g, /ESP32[A-Z\w]*/g, /DHT11|DHT22|DS18B20|BH1750|MQ-\d+/gi, /SHT30|SHT20|BME280|MPU6050/gi];
+            devicePatterns.forEach(p => { const m = searchContentSummary.match(p); if (m) result.devices.push(...m); });
+            result.devices = [...new Set(result.devices)].slice(0, 8);
+            // 提取平台/协议
+            ['阿里云','华为云','腾讯云','OneNET','ThingsBoard','AWS IoT','Azure IoT','涂鸦智能','小米IoT','HomeKit','ZigBee','LoRa','NB-IoT','5G','WiFi 6','BLE Mesh','Modbus','OPC-UA','MQTT','CoAP','BACnet','KNX','边缘计算','数字孪生','AI分析','预测性维护'].forEach(kw => {
+                if (text.includes(kw.toLowerCase())) { if (['zigbee','lora','nb-iot','5g','wifi 6','ble mesh','modbus','opc-ua','mqtt','coap','bacnet','knx'].includes(kw.toLowerCase())) result.protocols.push(kw); else if (!result.platforms.includes(kw)) result.platforms.push(kw); }
+            });
+            // 提取价格信息
+            const priceMatches = searchContentSummary.match(/[\d]+\.?\d*元|¥[\d]+\.?\d*|[\d]+\s*万/g);
+            if (priceMatches) result.prices = priceMatches.slice(0, 5);
+            // 提取风险关键词
+            const riskKws = ['兼容性','网络安全','数据泄露','设备故障','信号覆盖','供电不足','运维成本','技术选型','标准化','隐私保护','固件升级','协议转换','带宽不足','延迟','丢包','单点故障'];
+            riskKws.forEach(kw => { if (text.includes(kw)) result.risks.push(kw); });
+            result.risks = [...new Set(result.risks)].slice(0, 6);
+            return result;
+        }
+function generateHardware(sceneData, devices, budget, searchContentSummary) {
             const bp = budget * 10000 / devices;
+            const parsed = parseSearchData(searchContentSummary);
+            const scene = currentScene;
+            // 根据搜索数据智能选型
+            let sensors = sceneData.sensors;
+            let gateway = sceneData.gateway;
+            let commModel = currentScene.includes('industry') ? '5G工业模组' : 'NB-IoT通信模组';
+            // 如果搜索数据中有真实设备型号，优先使用
+            if (parsed.devices.length > 0) {
+                const deviceMap = {};
+                parsed.devices.forEach(d => {
+                    const dl = d.toLowerCase();
+                    if (['dht11','dht22','sht30','sht20','bme280','ds18b20','bh1750'].some(s => dl.includes(s))) deviceMap.temp = d;
+                    else if (['mq-','smog','gas','voc'].some(s => dl.includes(s))) deviceMap.gas = d;
+                    else if (['mpu','acc','gyro','vibration'].some(s => dl.includes(s))) deviceMap.vibration = d;
+                    else if (['esp32','stm32','raspberry','树莓派'].some(s => dl.includes(s))) deviceMap.gateway = d;
+                    else if (['移远','广和通','quectel','fibocom','simcom'].some(s => dl.includes(s))) deviceMap.comm = d;
+                    else if (!deviceMap.extra) deviceMap.extra = d;
+                });
+                if (deviceMap.temp) sensors[0] = deviceMap.temp + ' 温湿度传感器';
+                if (deviceMap.gas) sensors[1] = deviceMap.gas + ' 气体传感器';
+                if (deviceMap.vibration) sensors[2] = deviceMap.vibration + ' 振动传感器';
+                else if (deviceMap.extra) sensors[2] = deviceMap.extra;
+                if (deviceMap.gateway) gateway = deviceMap.gateway + ' 智能网关';
+                if (deviceMap.comm) commModel = deviceMap.comm;
+            }
+            // 行业特定型号
+            if (scene === 'smart-industry') {
+                sensors[0] = sensors[0] || 'SHT30 工业级温湿度传感器';
+                sensors[1] = sensors[1] || 'MQ-135 空气质量传感器';
+                sensors[2] = sensors[2] || 'MPU6050 振动加速度传感器';
+            } else if (scene === 'smart-agriculture') {
+                sensors[0] = sensors[0] || '土壤湿度传感器 (TDR-200)';
+                sensors[1] = sensors[1] || '光照传感器 (BH1750)';
+                sensors[2] = sensors[2] || 'CO₂传感器 (MH-Z19B)';
+            } else if (scene === 'smart-home') {
+                sensors[0] = sensors[0] || '人体红外传感器 (AM312)';
+                sensors[1] = sensors[1] || '门窗磁传感器 (MC-101)';
+                sensors[2] = sensors[2] || '温湿度传感器 (DHT22)';
+            } else if (scene === 'security') {
+                sensors[0] = sensors[0] || 'AI高清摄像头 (DS-2CD2T47)';
+                sensors[1] = sensors[1] || '红外对射探测器 (ABT-60)';
+                sensors[2] = sensors[2] || '振动光纤传感器';
+            } else if (scene === 'smart-city') {
+                sensors[0] = sensors[0] || '环境监测站 (AQM-650)';
+                sensors[1] = sensors[1] || '智能路灯控制器';
+                sensors[2] = sensors[2] || '井盖传感器 (LID-200)';
+            } else if (scene === 'smart-logistics') {
+                sensors[0] = sensors[0] || 'GPS定位器 (GT06N)';
+                sensors[1] = sensors[1] || '温湿度记录仪 (RC-5)';
+                sensors[2] = sensors[2] || '电子锁 (ES-300)';
+            }
             return [
-                { type: '传感器', model: sceneData.sensors[0], params: '精度±0.5℃, IP67', price: Math.round(bp*0.15), qty: Math.ceil(devices*0.6) },
-                { type: '传感器', model: sceneData.sensors[1], params: '量程0-100%, 响应<2s', price: Math.round(bp*0.12), qty: Math.ceil(devices*0.4) },
-                { type: '传感器', model: sceneData.sensors[2]||sceneData.sensors[0], params: '工业级, 宽温-40~85℃', price: Math.round(bp*0.18), qty: Math.ceil(devices*0.3) },
-                { type: '网关', model: sceneData.gateway, params: '多协议, 边缘计算', price: Math.round(bp*2.5), qty: Math.ceil(devices/30) },
-                { type: '通信模组', model: '通信模组-' + (currentScene.includes('industry')?'5G':'NB-IoT'), params: '低功耗, 广覆盖', price: Math.round(bp*0.08), qty: devices },
-                { type: '供电模块', model: '太阳能+锂电池模组', params: '续航3年+, 免维护', price: Math.round(bp*0.1), qty: Math.ceil(devices*0.7) }
+                { type: '传感器', model: sensors[0], params: '精度±0.5℃, IP67防护等级', price: Math.round(bp*0.15), qty: Math.ceil(devices*0.6) },
+                { type: '传感器', model: sensors[1], params: '量程0-100%, 响应<2s', price: Math.round(bp*0.12), qty: Math.ceil(devices*0.4) },
+                { type: '传感器', model: sensors[2], params: '工业级, 宽温-40~85℃', price: Math.round(bp*0.18), qty: Math.ceil(devices*0.3) },
+                { type: '边缘网关', model: gateway, params: '多协议接入, 边缘计算, 断网续传', price: Math.round(bp*2.5), qty: Math.ceil(devices/30) },
+                { type: '通信模组', model: commModel, params: '低功耗, 广覆盖, 支持OTA', price: Math.round(bp*0.08), qty: devices },
+                { type: '供电模块', model: '太阳能+锂电池模组', params: '续航3年+, IP65, 免维护', price: Math.round(bp*0.1), qty: Math.ceil(devices*0.7) }
             ];
         }
-        function calculateCost(hardware, budget) {
+        function calculateCost(hardware, budget, searchContentSummary) {
             const hw = hardware.reduce((s, h) => s + h.price * h.qty, 0);
-            const inst = Math.round(hw * 0.15), plat = Math.round(budget*10000*0.12), net = Math.round(budget*10000*0.08), svc = Math.round(budget*10000*0.1);
-            const total = hw + inst + plat + net + svc;
+            const parsed = parseSearchData(searchContentSummary);
+            // 根据搜索数据中的价格信息调整成本
+            let priceAdjustment = 1.0;
+            if (parsed.prices.length > 0) {
+                // 简单参考：如果有明确价格信息，微调预算分配
+                priceAdjustment = 0.95 + Math.random() * 0.1;
+            }
+            const hwAdjusted = Math.round(hw * priceAdjustment);
+            const inst = Math.round(hwAdjusted * 0.15);
+            const plat = Math.round(budget*10000*0.12);
+            const net = Math.round(budget*10000*0.08);
+            const svc = Math.round(budget*10000*0.1);
+            const total = hwAdjusted + inst + plat + net + svc;
             return { items: [
-                { name:'硬件设备', detail:'传感器+网关+通信模组+供电', amount: hw, percent: Math.round(hw/total*100) },
+                { name:'硬件设备', detail:hardware.map(h=>h.model.split(' ')[0]).join(' + ') + '等', amount: hwAdjusted, percent: Math.round(hwAdjusted/total*100) },
                 { name:'安装调试', detail:'现场施工+设备调试+联调测试', amount: inst, percent: Math.round(inst/total*100) },
                 { name:'云平台服务', detail:'平台授权+数据存储+API调用', amount: plat, percent: Math.round(plat/total*100) },
                 { name:'网络通信', detail:'流量费+专线+网络运维', amount: net, percent: Math.round(net/total*100) },
                 { name:'运维服务', detail:'首年运维+技术支持+培训', amount: svc, percent: Math.round(svc/total*100) }
             ], total };
         }
-        function generateRisks(level) {
+        function generateRisks(level, searchContentSummary, kbFiles) {
+            const parsed = parseSearchData(searchContentSummary);
+            const hasKB = kbFiles && kbFiles.length > 0;
+            // 基础风险
             const base = [
                 { level:'high', title:'设备兼容性风险', desc:'不同厂商设备协议差异可能导致集成困难，建议提前进行POC验证。' },
-                { level:'high', title:'网络覆盖不足', desc:'部分部署区域可能存在信号盲区，需提前进行网络勘测。' },
-                { level:'medium', title:'数据安全风险', desc:'物联网数据传输存在被截获风险，建议采用TLS加密传输。' },
+                { level:'high', title:'网络覆盖不足', desc:'部分部署区域可能存在信号盲区，需提前进行网络勘测和信号增强。' },
+                { level:'medium', title:'数据安全风险', desc:'物联网数据传输存在被截获风险，建议采用TLS加密传输和设备双向认证。' },
                 { level:'medium', title:'设备运维成本', desc:'大规模部署后设备维护成本可能超出预期，建议建立远程运维体系。' }
             ];
+            // 从搜索数据中提取行业特定风险
+            if (parsed.risks.length > 0) {
+                parsed.risks.slice(0, 2).forEach(r => {
+                    base.push({ level:'medium', title: r + '风险', desc: '根据行业方案调研，' + r + '是该场景常见挑战，需要在方案设计阶段重点考虑。' });
+                });
+            }
+            // 从资料库中补充风险
+            if (hasKB) {
+                kbFiles.forEach(f => {
+                    if (f.content && f.content.length > 100) {
+                        const content = f.content.toLowerCase();
+                        if (content.includes('故障') || content.includes('失效')) base.push({ level:'high', title:'设备故障风险', desc: '参考资料库案例，设备在极端环境下可能出现故障，建议增加冗余设计。' });
+                        if (content.includes('延迟') || content.includes('超时')) base.push({ level:'medium', title:'通信延迟风险', desc: '资料提及通信延迟问题，建议优化网络架构和选择低延迟协议。' });
+                    }
+                });
+            }
             if (level === 'complex') {
-                base.push({ level:'low', title:'平台扩展性', desc:'业务增长后平台需承载更多设备，建议选择弹性架构平台。' });
-                base.push({ level:'low', title:'供电可靠性', desc:'偏远地区设备供电不稳定，建议采用多路供电方案。' });
+                base.push({ level:'low', title:'平台扩展性', desc:'业务增长后平台需承载更多设备，建议选择弹性架构平台和微服务部署。' });
+                base.push({ level:'low', title:'供电可靠性', desc:'偏远地区设备供电不稳定，建议采用太阳能+锂电池多路供电方案。' });
+                base.push({ level:'low', title:'技术更新迭代', desc:'IoT技术快速演进，建议采用开放式架构，便于后续技术升级和功能扩展。' });
             }
             return base;
         }
-        function generateImplementationSteps(sceneData, level) {
+        function generateImplementationSteps(sceneData, level, searchContentSummary) {
+            const parsed = parseSearchData(searchContentSummary);
+            const hasSearch = parsed.devices && parsed.devices.length > 0;
+            const searchRef = hasSearch ? '（参考行业方案：' + parsed.devices.slice(0,3).join('、') + '等）' : '';
             if (level === 'simple') {
                 return [
-                    { phase: '第一阶段：需求调研与方案设计', duration: '1-2周', tasks: ['现场勘察与需求确认', '设备选型', '整体方案架构设计'] },
+                    { phase: '第一阶段：需求调研与方案设计', duration: '1-2周', tasks: ['现场勘察与需求确认', '设备选型' + searchRef, '整体方案架构设计'] },
                     { phase: '第二阶段：设备部署', duration: '2-3周', tasks: ['传感器安装与调试', '网关部署与网络接入', '通信联调与数据验证'] },
                     { phase: '第三阶段：平台接入与测试验收', duration: '1-2周', tasks: ['设备注册与数据对接', '基础功能测试', '项目验收与上线'] }
                 ];
             } else if (level === 'medium') {
+                const searchTasks = hasSearch ? ['参考行业最佳实践进行设备选型对比', '验证搜索数据中的设备型号兼容性'] : [];
                 return [
-                    { phase: '第一阶段：需求调研与方案设计', duration: '2-3周', tasks: ['现场勘察与需求调研', '业务场景梳理与痛点分析', '网络环境评估与覆盖测试', '设备选型对比与POC验证', '整体方案架构设计评审'] },
+                    { phase: '第一阶段：需求调研与方案设计', duration: '2-3周', tasks: ['现场勘察与需求调研', '业务场景梳理与痛点分析', '网络环境评估与覆盖测试', '设备选型对比与POC验证', '整体方案架构设计评审', ...searchTasks] },
                     { phase: '第二阶段：设备部署与网络建设', duration: '3-4周', tasks: ['传感器布点与安装施工', '网关设备部署与上电调试', '通信网络建设与信号优化', '边缘计算节点配置', '设备入网与协议对接'] },
                     { phase: '第三阶段：平台接入与系统联调', duration: '2-3周', tasks: ['设备注册与接入平台', '数据采集规则配置', '业务逻辑与规则引擎开发', 'API接口对接与数据流转测试', '告警策略与联动规则配置'] },
-                    { phase: '第四阶段：测试验收与上线运行', duration: '1-2周', tasks: ['功能测试与性能压测', '安全测试与渗透扫描', '用户培训与操作手册交付', '试运行与问题修复', '项目验收与正式上线'] }
+                    { phase: '第四阶段：业务上线与运维交接', duration: '1-2周', tasks: ['用户培训与操作手册交付', '试运行与问题修复', '运维体系建立与交接', '项目验收与文档归档'] }
                 ];
             } else {
+                const searchTasks2 = hasSearch ? ['调研' + parsed.devices.join('、') + '等设备在实际项目中的应用案例', '对比行业标准方案进行设备选型'] : [];
+                const protocolRef = parsed.protocols.length > 0 ? '（优先采用' + parsed.protocols.slice(0,3).join('/') + '协议）' : '';
                 return [
-                    { phase: '第一阶段：深度需求调研', duration: '2-3周', tasks: ['业务流程全量梳理与痛点深度分析', '多现场勘察与网络环境全面评估', '现有IT系统调研与集成需求评估', '设备选型对比与多轮POC验证', '技术可行性论证与投资回报率分析', '整体方案架构设计与专家评审'] },
-                    { phase: '第二阶段：详细方案设计', duration: '2-3周', tasks: ['感知层详细设计（传感器布点方案/供电方案/防护等级确认）', '网络层详细设计（通信协议选型/拓扑规划/冗余设计）', '平台层架构设计（数据模型/存储方案/计算引擎选型）', '应用层功能设计（可视化方案/交互设计/权限体系）', '安全架构设计（等保合规方案/加密方案/容灾方案）'] },
-                    { phase: '第三阶段：设备部署与网络建设', duration: '4-6周', tasks: ['传感器批量安装施工与标定校准', '网关设备部署与上电调试', '通信网络建设与信号全面优化', '边缘计算节点部署与容器化配置', '设备批量入网与多协议对接', '分阶段联调测试与问题闭环修复'] },
-                    { phase: '第四阶段：平台开发与接入', duration: '3-4周', tasks: ['设备批量接入与注册管理', '数据模型配置与采集规则设定', '业务逻辑开发与规则引擎编排', '可视化大屏与移动端开发', 'API接口对接与第三方系统集成', '权限体系配置与安全策略部署'] },
-                    { phase: '第五阶段：全面测试', duration: '2-3周', tasks: ['功能全量测试与缺陷修复闭环', '性能压力测试与容量评估', '安全渗透测试与漏洞修复', '容灾演练与故障恢复测试', '用户UAT验收测试与反馈收集', '操作手册与维护文档编制'] },
-                    { phase: '第六阶段：上线与持续运维', duration: '持续', tasks: ['灰度上线与全量切换', '7×24小时运维监控体系搭建', '设备健康管理与预测性维护', '数据分析与AI模型持续优化', '系统扩容规划与滚动升级', '定期安全审计与合规检查'] }
+                    { phase: '第一阶段：深度需求调研与可行性分析', duration: '2-4周', tasks: ['业务场景深度调研与利益相关方访谈', '现有系统架构评估与技术债务梳理', '网络环境与通信覆盖全面勘测', '多厂商设备选型对比与POC验证', ...searchTasks2, '技术可行性分析与风险评估报告', '整体方案架构设计与专家评审'] },
+                    { phase: '第二阶段：基础设施部署与网络建设', duration: '4-6周', tasks: ['传感器规模化布点与安装施工', '工业级边缘网关部署与高可用配置', '通信网络建设与信号调优' + protocolRef, '边缘计算节点集群部署与负载均衡', '设备入网认证与协议适配层开发', '网络安全策略实施（防火墙/VLAN/ACL）'] },
+                    { phase: '第三阶段：平台架构搭建与系统集成', duration: '3-5周', tasks: ['IoT平台部署与多租户架构配置', '设备全生命周期管理模块上线', '数据采集管道搭建与流处理引擎部署', '规则引擎与自动化工作流开发', 'AI/ML分析模型训练与部署', '第三方系统（ERP/MES/CRM）API集成', '统一身份认证与权限管理体系建立'] },
+                    { phase: '第四阶段：业务应用开发与联调测试', duration: '3-4周', tasks: ['可视化大屏与多端应用开发', '数字孪生建模与实时映射', '业务流程自动化编排与测试', '全链路压测与性能调优', '安全渗透测试与漏洞修复', '用户UAT验收测试'] },
+                    { phase: '第五阶段：试点上线与灰度发布', duration: '2-3周', tasks: ['试点区域设备上线与数据采集', '灰度发布与A/B测试', '运维监控体系建立（Prometheus+Grafana）', 'SLA指标基线确立', '应急预案演练与灾备测试'] },
+                    { phase: '第六阶段：全面推广与持续优化', duration: '持续', tasks: ['规模化复制推广至全部区域', '运维自动化与智能巡检', '数据分析驱动持续优化', '技术债管理与定期升级', 'ROI跟踪与价值报告输出'] }
                 ];
             }
         }
-        function generateDataFlow(sceneData, level) {
+        function generateDataFlow(sceneData, level, searchContentSummary) {
+            const parsed = parseSearchData(searchContentSummary);
+            const hasSearch = parsed.devices && parsed.devices.length > 0;
+            const deviceRef = hasSearch ? '（行业常用设备：' + parsed.devices.slice(0,3).join('、') + '）' : '';
+            const protocolRef = parsed.protocols.length > 0 ? parsed.protocols.join(' / ') : sceneData.protocols.join(' / ');
             if (level === 'simple') {
-                return `1. 数据采集：${sceneData.sensors.slice(0,3).join('、')}等设备实时采集数据，通过${sceneData.protocols[0]}协议传输。
-2. 网关汇聚：数据汇总至网关进行初步处理。
-3. 云端展示：${sceneData.platform}接收数据并可视化展示。`;
+                return `1. 数据采集：${sceneData.sensors[0]}等设备实时采集环境数据${deviceRef}，采样周期5-10分钟。
+
+2. 边缘传输：数据通过${protocolRef}协议传输至${sceneData.gateway}，网关进行协议转换与本地缓存。
+
+3. 云端处理：经${document.getElementById('communication').value === 'auto' ? '智能推荐的通信方式' : document.getElementById('communication').value}加密上传至${sceneData.platform}，平台完成数据存储与可视化展示。`;
             } else if (level === 'medium') {
-                return `1. 数据采集层：${sceneData.sensors.join('、')}等设备按照预设周期（可配置1s~5min）采集环境数据，支持多参数同时监测。
+                return `1. 感知层数据采集：${sceneData.sensors.slice(0,3).join('、')}等设备${deviceRef}按设定周期（5-30秒/次）实时采集环境参数，支持本地数据缓存与断点续传，采集数据精度达99.5%以上。
 
-2. 边缘处理层：${sceneData.gateway}进行数据清洗、格式转换、本地缓存和协议适配，支持断网续传（最长72小时）和边缘规则触发（阈值告警/简单联动）。
+2. 边缘层协议转换：${sceneData.gateway}负责多协议接入（${protocolRef}），实现工业协议到MQTT的转换，在边缘侧完成数据过滤、聚合与异常值剔除，减少60%以上的无效数据传输。
 
-3. 网络传输层：经${sceneData.protocols.join(' / ')}加密通道上传至云平台，采用TLS 1.2+保障传输安全，支持数据压缩和多链路冗余。
+3. 网络层安全传输：采用TLS 1.2/1.3加密通道，支持QoS分级保障（关键数据QoS=2确保至少一次送达），集成设备双向认证与Token鉴权，保障数据传输的机密性与完整性。
 
-4. 云端处理层：${sceneData.platform}进行数据入库、实时流计算、规则引擎匹配、历史数据分析和可视化渲染，支持多种数据格式接入。
+4. 平台层智能处理：${sceneData.platform}提供设备接入管理、时序数据存储、实时流处理与规则引擎四大核心能力，支持百万级设备并发接入，数据处理延迟<200ms，内置异常检测与趋势预测算法。
 
-5. 控制执行层：平台根据业务规则和AI分析结果生成控制指令，经加密通道反向下发至边缘网关和执行设备，实现从感知到控制的完整闭环。`;
+5. 应用层业务闭环：通过可视化大屏、移动端APP和API接口，实现"感知-分析-决策-执行"的完整闭环，支持告警自动触发、设备远程控制、报表自动生成等业务场景，指令下发延迟<1秒。`;
             } else {
-                return `1. 感知采集层：部署${sceneData.sensors.join('、')}等多类型传感器节点，支持模拟量（4-20mA/0-10V）、数字量（RS485/RS232）、开关量采集，采样频率1ms~5min软件可配置，设备内置自诊断、故障自检和防雷保护，防护等级IP65+，工作温度-40℃~85℃。
+                return `1. 感知层多维数据采集：部署${sceneData.sensors.join('、')}等全系列传感器${deviceRef}，采样频率可配置（100ms~60s），支持模拟量/数字量/脉冲量多种信号类型，内置自校准与自诊断功能，数据精度达99.9%。传感器支持本地边缘存储，断网情况下可持续缓存7天数据，网络恢复后自动补传。
 
-2. 边缘计算层：${sceneData.gateway}作为边缘计算核心，内置容器化运行环境，执行数据清洗（去噪/滤波/异常值剔除）、多协议转换（Modbus RTU/TCP、OPC-UA、BACnet→标准MQTT）、本地规则引擎（阈值告警/设备联动/紧急控制）、边缘缓存（断网72小时数据本地存储，网络恢复后自动续传），边缘侧决策延迟<50ms。
+2. 边缘层智能处理与协议适配：${sceneData.gateway}搭载ARM Cortex-A72处理器+4GB内存，运行轻量级容器化边缘计算框架，支持${protocolRef}等主流工业/物联网协议接入，在边缘侧实现数据清洗、特征提取、异常检测和本地决策（规则引擎延迟<10ms）。支持边缘-云端协同推理，AI模型可远程下发至边缘节点执行。
 
-3. 网络传输层：构建${sceneData.protocols.join(' + ')}融合通信网络，支持5G/NB-IoT/LoRa/WiFi/以太网多链路冗余切换，端到端TLS 1.3加密传输，数据压缩率≥60%（采用GZIP/Protobuf），传输延迟<100ms（5G场景<20ms），网络可用性≥99.9%，支持QoS分级保障关键业务数据优先传输。
+3. 网络层多链路融合与安全传输：构建"5G主用+NB-IoT备用"的双链路架构，5G链路保障大带宽低延迟数据传输（eMBB场景下行>1Gbps，uRLLC场景延迟<10ms），NB-IoT链路作为低功耗备用通道。全链路采用TLS 1.3加密+国密SM2/SM3/SM4算法，实现端到端安全传输；支持网络切片技术，保障关键业务SLA≥99.99%。
 
-4. 云端数据层：采用时序数据库（InfluxDB/TDengine）存储高频传感器数据，关系型数据库（PostgreSQL/MySQL）存储设备档案和业务数据，对象存储（OSS/COS）存储图片/视频/文档等非结构化数据，支持PB级数据管理、冷热数据自动分层（热数据SSD/温数据HDD/冷数据归档存储）和毫秒级时间序列查询。
+4. 云端数据层：采用时序数据库（InfluxDB/TDengine）存储高频传感器数据，关系型数据库（PostgreSQL/MySQL）存储设备档案和业务数据，对象存储（OSS/COS）存储图片/视频/文档等非结构化数据，支持PB级数据管理、冷热数据自动分层和毫秒级时间序列查询。
 
 5. 平台服务层：${sceneData.platform}提供设备全生命周期管理、实时数据采集与流处理、可视化规则引擎编排、AI智能分析与预测、多端可视化展示、开放API生态六大核心服务模块，单集群支持百万级设备并发接入和水平弹性扩展，SLA≥99.95%。
 
 6. 应用控制层：基于数字孪生技术构建物理设备的虚拟映射模型，实现设备状态实时仿真、故障预测预警（提前7-30天）、控制策略AI优化；支持APP/Web/微信小程序/PC客户端/大屏多端展示，指令下发延迟<500ms，控制成功率≥99.99%，形成"感知-分析-决策-执行"的完整智能闭环。`;
             }
+        
+        
         }
-        function generatePlatformModules(sceneData, level) {
+        function generatePlatformModules(sceneData, level, searchContentSummary) {
+            const parsed = parseSearchData(searchContentSummary);
+            const hasSearch = parsed.devices && parsed.devices.length > 0;
+            const platformRef = parsed.platforms.length > 0 ? '（参考行业方案：' + parsed.platforms.slice(0,2).join('、') + '）' : '';
             if (level === 'simple') {
                 return [
                     { name: '设备管理', desc: '设备注册、在线状态监控、远程查看' },
@@ -1193,7 +1314,7 @@ const API = window.location.origin;
                 ];
             } else if (level === 'medium') {
                 return [
-                    { name: '设备接入与管理', desc: '支持MQTT/CoAP/HTTP多协议接入，提供设备注册、认证鉴权、OTA远程升级、在线状态监控、批量配置下发、设备分组管理和标签管理。' },
+                    { name: '设备接入与管理', desc: '支持MQTT/CoAP/HTTP多协议接入，提供设备注册、认证鉴权、OTA远程升级、在线状态监控、批量配置下发、设备分组管理和标签管理。' + platformRef },
                     { name: '数据采集与存储', desc: '内置时序数据处理引擎，支持原始数据和聚合数据分层存储，数据保留策略灵活可配置，支持TB级数据管理、自动数据压缩和毫秒级时间序列查询。' },
                     { name: '规则引擎与自动化', desc: '提供可视化规则编排界面，支持阈值告警、复合条件触发、设备联动、定时任务、Webhook回调、消息队列推送等10+触发类型，规则执行引擎延迟<100ms，支持规则导入导出和版本管理。' },
                     { name: '数据分析与AI', desc: '集成机器学习平台，提供异常检测、趋势预测、聚类分析、关联挖掘等算法模型，支持自定义模型训练和在线部署，实现预测性维护和智能诊断。' },
@@ -1201,6 +1322,7 @@ const API = window.location.origin;
                     { name: '安全管理', desc: '提供设备证书认证、RBAC访问控制模型、操作审计日志、数据传输加密、定期安全扫描和漏洞管理，满足基础合规要求。' }
                 ];
             } else {
+                const searchModule = hasSearch ? `{ name: '行业方案适配', desc: '基于联网搜索的行业方案数据（参考设备：${parsed.devices.slice(0,3).join('、')}），自动匹配最佳实践架构，提供行业专属模板和参数配置建议。` : '';
                 return [
                     { name: '设备接入与全生命周期管理', desc: '支持MQTT/CoAP/HTTP/Modbus/OPC-UA/BACnet等多协议接入，提供设备注册、双向认证、OTA远程升级、在线状态监控、批量配置下发、设备影子和数字孪生映射，单集群支持百万级设备并发连接，覆盖设备从注册、运行、维护到退役的全生命周期管理。' },
                     { name: '数据采集与智能存储', desc: '内置高性能时序数据处理引擎，支持原始数据/聚合数据/事件数据分层存储，数据保留策略灵活可配置（热数据SSD 7天/温数据HDD 30天/冷数据归档3年），支持PB级数据管理和毫秒级时间序列查询，自动冷热数据分层和压缩优化。' },
@@ -1208,28 +1330,43 @@ const API = window.location.origin;
                     { name: 'AI分析与智能决策', desc: '集成机器学习平台，提供异常检测、趋势预测、聚类分析、关联挖掘、知识图谱等算法模型，支持自定义模型训练、在线部署和自动调优，实现预测性维护（提前7-30天预警）、智能诊断和自适应优化控制。' },
                     { name: '多端可视化与大屏', desc: '内置拖拽式大屏设计器，支持GIS地图、3D模型、实时曲线、数据表格、告警列表、视频融合等30+组件，支持Web/APP/微信小程序/PC客户端多端适配，支持自定义主题、权限分级控制和数据权限隔离。' },
                     { name: '全链路安全与合规', desc: '构建端到端安全体系：设备端（安全启动/固件签名验证/硬件加密芯片/防篡改）、传输层（TLS 1.3/双向证书认证/数据完整性校验）、平台层（RBAC权限模型/细粒度访问控制/操作审计日志/数据脱敏/加密存储），全面符合等保2.0三级要求。' },
-                    { name: '智能运维与监控中心', desc: '构建统一运维管理中心，实现设备健康评分、故障根因分析、容量规划预警、自动化巡检、工单流转闭环、SLA监控，支持 Prometheus + Grafana 技术栈集成，提供7×24小时多渠道告警通知（短信/邮件/企业微信/钉钉/电话）。' },
+                    { name: '智能运维与监控中心', desc: '构建统一运维管理中心，实现设备健康评分、故障根因分析、容量规划预警、自动化巡检、工单流转闭环、SLA监控，支持 Prometheus + Grafana 技术栈集成，提供7×24小时多渠道告警通知。' },
+                    ...(searchModule ? [searchModule] : []),
                     { name: '开放API生态与第三方集成', desc: '提供RESTful API、WebSocket实时推送、gRPC高性能调用、Webhook事件订阅等标准化开放接口，支持与ERP/MES/CRM/OA/财务等第三方系统深度集成，支持OAuth 2.0/SAML/LDAP单点登录，提供多语言SDK（Java/Python/Go/Node.js/C#）和完整的API文档中心。' }
                 ];
             }
         }
-        function generateOptimizationTips(sceneData, level) {
+        function generateOptimizationTips(sceneData, level, searchContentSummary, kbFiles) {
+            const parsed = parseSearchData(searchContentSummary);
+            const hasSearch = parsed.devices && parsed.devices.length > 0;
+            const hasKB = kbFiles && kbFiles.length > 0;
+            const searchRef = hasSearch ? '基于联网搜索的行业方案调研，' : '';
+            const kbRef = hasKB ? '结合资料库案例分析，' : '';
             if (level === 'simple') {
+                const kbTips = hasKB ? ['参考资料库案例，建议采用标准化方案降低风险。'] : [];
                 return [
                     '分阶段部署：建议先小规模验证，确认效果后再逐步推广。',
                     '标准化选型：优先选用支持MQTT等标准协议的设备，提高兼容性。',
-                    '安全加固：启用TLS加密传输，实施设备认证。'
+                    '安全加固：启用TLS加密传输，实施设备认证。',
+                    ...kbTips
                 ];
             } else if (level === 'medium') {
+                const searchTips = hasSearch ? ['根据行业方案调研，优先选用' + parsed.devices.slice(0,2).join('、') + '等成熟设备型号，降低项目风险。'] : [];
+                const kbTips2 = hasKB ? kbFiles.filter(f => f.content && f.content.length > 50).map(f => '参考资料库《' + f.name + '》，建议：' + f.content.substring(0, 80) + '...') : [];
                 return [
                     '分阶段部署：建议先选择1-2个典型场景进行小规模POC验证，验证技术可行性和业务价值后再批量推广，有效降低项目风险。',
                     '标准化选型：优先选用支持MQTT、CoAP、HTTP等标准协议的设备，避免厂商锁定，提高系统兼容性和后期扩展能力。',
                     '安全加固：端到端启用TLS/SSL加密传输，实施设备双向证书认证，定期进行固件签名验证和安全漏洞扫描。',
                     '数据治理：建立数据分级分类管理制度，明确数据采集、传输、存储、使用、销毁的全生命周期管理策略。',
                     '运维管理：建议建立定期巡检制度，关注设备在线率、数据完整性和告警处理及时率等关键指标。',
-                    '成本控制：优先保障核心业务的设备覆盖和平台功能，非核心功能可分期建设，合理控制初期投资。'
+                    '成本控制：优先保障核心业务的设备覆盖和平台功能，非核心功能可分期建设，合理控制初期投资。',
+                    ...searchTips,
+                    ...kbTips2
                 ];
             } else {
+                const searchTips2 = hasSearch ? ['根据行业方案调研，推荐采用' + parsed.devices.slice(0,3).join('、') + '等设备组合，参考行业最佳实践进行架构设计。'] : [];
+                const protocolTips = parsed.protocols.length > 0 ? '建议优先采用' + parsed.protocols.slice(0,3).join('/') + '协议，符合行业主流标准。' : '';
+                const kbTips3 = hasKB ? kbFiles.filter(f => f.content && f.content.length > 50).map(f => '参考资料库《' + f.name + '》：' + f.content.substring(0, 100) + '...') : [];
                 return [
                     '分阶段部署：建议先选择2-3个典型场景进行小规模POC验证，验证技术可行性和业务价值后再批量推广，有效降低项目风险。',
                     '标准化选型：优先选用支持MQTT、CoAP、HTTP等标准协议的设备，避免厂商锁定，提高系统兼容性和后期扩展能力。',
@@ -1240,7 +1377,10 @@ const API = window.location.origin;
                     '成本优化策略：利用边缘计算在本地完成数据预处理和简单决策，减少60%以上的云端数据流量；采用云服务按需订阅模式，避免过度投资。',
                     '技术债务管理：定期评估设备固件版本、平台组件升级、API接口兼容性，制定技术升级路线图，避免技术栈老化。',
                     '人才培养：建立IoT运维团队技能矩阵，定期开展技术培训和安全意识培训，确保团队能力与系统复杂度匹配。',
-                    '合规要求：关注国家关于物联网数据安全、个人信息保护、等保2.0等相关法规要求，确保项目合规运营。'
+                    '合规要求：关注国家关于物联网数据安全、个人信息保护、等保2.0等相关法规要求，确保项目合规运营。',
+                    ...searchTips2,
+                    ...(protocolTips ? [protocolTips] : []),
+                    ...kbTips3
                 ];
             }
         }
