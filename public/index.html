@@ -1102,7 +1102,7 @@ const API = window.location.origin;
 
         
         function parseSearchData(searchContentSummary) {
-            if (!searchContentSummary || searchContentSummary.length < 50) return {};
+            if (!searchContentSummary || searchContentSummary.length < 50) return { devices: [], platforms: [], protocols: [], prices: [], risks: [] };
             const result = { devices: [], platforms: [], protocols: [], prices: [], risks: [] };
             const text = searchContentSummary.toLowerCase();
             // 提取设备型号 (常见传感器/网关/模组)
