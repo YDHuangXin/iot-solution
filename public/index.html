@@ -1044,20 +1044,42 @@ const API = window.location.origin;
         // 从后端获取场景数据（联网搜索 + 资料库）
         async function fetchSceneData(scene, desc) {
             // 先查缓存
-            if (sceneDataCache[scene]) return sceneDataCache[scene];
+            const cacheKey = scene + ':' + (desc || '').substring(0, 80).replace(/\s+/g, '_');
+            if (sceneDataCache[cacheKey]) return sceneDataCache[cacheKey];
 
-            const kbIds = kbFiles.length > 0 ? kbFiles.map(f => f.id || f.name) : [];
+            const kbIds = kbFiles.filter(f => f.id).map(f => f.id);
+            const kbContents = kbFiles.filter(f => f.content && f.content.length > 100).map(f => ({ name: f.name, tags: f.tags || [], contentLen: f.content.length }));
             try {
                 const r = await fetch(API + '/api/generate/scene-data', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer '+authToken },
-                    body: JSON.stringify({ scene, kbFileIds: kbIds, description: desc })
+                    body: JSON.stringify({ scene, kbFileIds: kbIds, kbContents: kbContents, description: desc })
                 });
                 if (r.ok) {
                     const data = await r.json();
                     if (data.success && data.data) {
-                        sceneDataCache[scene] = data.data;
-                        return data.data;
+                        // 合并知识库数据和搜索数据
+                        let merged = data.data;
+                        const kbScene = generateSceneFromKB(kbFiles, desc);
+                        if (kbScene) {
+                            // 知识库优先级高于搜索，但搜索可以补充
+                            merged = {
+                                ...data.data,
+                                name: kbScene.name || data.data.name,
+                                icon: kbScene.icon || data.data.icon,
+                                sensors: kbScene.sensors.length > 0 ? kbScene.sensors : data.data.sensors,
+                                gateway: kbScene.gateway || data.data.gateway,
+                                protocols: kbScene.protocols.length > 0 ? kbScene.protocols : data.data.protocols,
+                                platform: kbScene.platform || data.data.platform,
+                                features: kbScene.features.length > 0 ? kbScene.features : data.data.features,
+                                desc: kbScene.desc || data.data.desc,
+                                kbContent: kbScene.content || data.data.searchContentSummary || '',
+                                dataFromKB: true,
+                                kbFiles: kbFiles  // 直接传递前端 kbFiles 给生成函数
+                            };
+                        }
+                        sceneDataCache[cacheKey] = merged;
+                        return merged;
                     }
                 }
             } catch (e) { console.log('API 获取场景数据失败，使用本地默认:', e.message); }
@@ -1082,9 +1104,10 @@ const API = window.location.origin;
             const comm = document.getElementById('communication').value;
             const cloud = document.getElementById('cloudPlatform').value;
             const desc = document.getElementById('description').value;
-            const hardware = generateHardware(sceneData, devices, budget, sceneData.searchContentSummary || '');
+            const userDesc = parseUserDescription(desc);
+            const hardware = generateHardware(sceneData, devices, budget, sceneData.searchContentSummary || '', userDesc);
             const cost = calculateCost(hardware, budget, sceneData.searchContentSummary || '');
-            const risks = generateRisks(level, sceneData.searchContentSummary || '', kbFiles);
+            const risks = generateRisks(level, sceneData.searchContentSummary || '', kbFiles, userDesc);
             const kbInsights = generateKbInsights();
 
             const base = {
@@ -1109,11 +1132,11 @@ const API = window.location.origin;
 
             // 根据复杂度增加内容
             if (level === 'simple') {
-                return { ...base, level: 'simple', levelLabel: '简单方案', levelIcon: '📝', searchContentSummary: sceneData.searchContentSummary || '', implementationSteps: generateImplementationSteps(sceneData, 'simple', sceneData.searchContentSummary || ''), dataFlow: generateDataFlow(sceneData, 'simple', sceneData.searchContentSummary || ''), platformModules: generatePlatformModules(sceneData, 'simple', sceneData.searchContentSummary || ''), optimizationTips: generateOptimizationTips(sceneData, 'simple', sceneData.searchContentSummary || '', kbFiles) };
+                return { ...base, level: 'simple', levelLabel: '简单方案', levelIcon: '📝', searchContentSummary: sceneData.searchContentSummary || '', implementationSteps: generateImplementationSteps(sceneData, 'simple', sceneData.searchContentSummary || '', userDesc), dataFlow: generateDataFlow(sceneData, 'simple', sceneData.searchContentSummary || '', userDesc), platformModules: generatePlatformModules(sceneData, 'simple', sceneData.searchContentSummary || '', userDesc), optimizationTips: generateOptimizationTips(sceneData, 'simple', sceneData.searchContentSummary || '', kbFiles, userDesc) };
             } else if (level === 'medium') {
-                return { ...base, level: 'medium', levelLabel: '中等方案', levelIcon: '📋', searchContentSummary: sceneData.searchContentSummary || '', implementationSteps: generateImplementationSteps(sceneData, 'medium', sceneData.searchContentSummary || ''), dataFlow: generateDataFlow(sceneData, 'medium', sceneData.searchContentSummary || ''), platformModules: generatePlatformModules(sceneData, 'medium', sceneData.searchContentSummary || ''), optimizationTips: generateOptimizationTips(sceneData, 'medium', sceneData.searchContentSummary || '', kbFiles) };
+                return { ...base, level: 'medium', levelLabel: '中等方案', levelIcon: '📋', searchContentSummary: sceneData.searchContentSummary || '', implementationSteps: generateImplementationSteps(sceneData, 'medium', sceneData.searchContentSummary || '', userDesc), dataFlow: generateDataFlow(sceneData, 'medium', sceneData.searchContentSummary || '', userDesc), platformModules: generatePlatformModules(sceneData, 'medium', sceneData.searchContentSummary || '', userDesc), optimizationTips: generateOptimizationTips(sceneData, 'medium', sceneData.searchContentSummary || '', kbFiles, userDesc) };
             } else {
-                return { ...base, level: 'complex', levelLabel: '复杂方案', levelIcon: '📚', implementationSteps: generateImplementationSteps(sceneData, 'complex', sceneData.searchContentSummary || ''), dataFlow: generateDataFlow(sceneData, 'complex', sceneData.searchContentSummary || ''), platformModules: generatePlatformModules(sceneData, 'complex', sceneData.searchContentSummary || ''), optimizationTips: generateOptimizationTips(sceneData, 'complex', sceneData.searchContentSummary || '', kbFiles), roiAnalysis: generateROIAnalysis(budget, devices, sceneData), searchContentSummary: sceneData.searchContentSummary || '' };
+                return { ...base, level: 'complex', levelLabel: '复杂方案', levelIcon: '📚', implementationSteps: generateImplementationSteps(sceneData, 'complex', sceneData.searchContentSummary || '', userDesc), dataFlow: generateDataFlow(sceneData, 'complex', sceneData.searchContentSummary || '', userDesc), platformModules: generatePlatformModules(sceneData, 'complex', sceneData.searchContentSummary || '', userDesc), optimizationTips: generateOptimizationTips(sceneData, 'complex', sceneData.searchContentSummary || '', kbFiles, userDesc), roiAnalysis: generateROIAnalysis(budget, devices, sceneData, userDesc), searchContentSummary: sceneData.searchContentSummary || '' };
             }
         }
 
@@ -1139,7 +1162,8 @@ const API = window.location.origin;
             result.risks = [...new Set(result.risks)].slice(0, 6);
             return result;
         }
-function generateHardware(sceneData, devices, budget, searchContentSummary) {
+function generateHardware(sceneData, devices, budget, searchContentSummary, userDesc) {
+            const kbInfo = extractKBInfo(kbFiles, currentScene);
             const bp = budget * 10000 / devices;
             const parsed = parseSearchData(searchContentSummary);
             const scene = currentScene;
@@ -1148,12 +1172,31 @@ function generateHardware(sceneData, devices, budget, searchContentSummary) {
             let gateway = sceneData.gateway || getDefaultSceneData(scene).gateway;
             let commModel = currentScene.includes('industry') ? '5G工业模组' : 'NB-IoT通信模组';
             // 优先使用知识库中的设备型号，其次使用搜索数据
+            // 知识库设备型号 - 仅当与场景匹配时才使用
             if (kbInfo.sensors.length > 0) {
-                // 从知识库提取的设备型号优先
-                for (let i = 0; i < Math.min(kbInfo.sensors.length, 3); i++) {
-                    if (i < sensors.length) sensors[i] = kbInfo.sensors[i];
+                // 检查 KB 传感器是否与当前场景相关
+                const sceneKeywords = {
+                    'smart-industry': ['工业','工厂','产线','车间','PLC','Modbus','OPC','振动','电流','气压','温湿度'],
+                    'smart-agriculture': ['农业','土壤','灌溉','温室','大棚','气象','水质','作物','墒情'],
+                    'smart-home': ['家居','家庭','住宅','人体','门窗','照明','空调','窗帘','智能'],
+                    'security': ['安防','监控','摄像头','门禁','消防','周界','红外','视频','人脸'],
+                    'smart-city': ['城市','市政','路灯','井盖','交通','停车','环境','噪声','管网'],
+                    'smart-logistics': ['物流','仓储','运输','冷链','GPS','RFID','电子锁','追溯','配送']
+                };
+                const sceneKws = sceneKeywords[currentScene] || [];
+                // 只使用与场景相关的 KB 传感器
+                const relevantSensors = kbInfo.sensors.filter(s => {
+                    const sl = s.toLowerCase();
+                    return sceneKws.some(kw => sl.includes(kw.toLowerCase()));
+                });
+                if (relevantSensors.length > 0) {
+                    for (let i = 0; i < Math.min(relevantSensors.length, 3); i++) {
+                        if (i < sensors.length) sensors[i] = relevantSensors[i];
+                    }
                 }
-            } else if (parsed.devices.length > 0) {
+            }
+            // 如果 KB 没有相关传感器，使用搜索数据
+            else if (parsed.devices.length > 0) {
                 const deviceMap = {};
                 parsed.devices.forEach(d => {
                     const dl = d.toLowerCase();
@@ -1171,39 +1214,89 @@ function generateHardware(sceneData, devices, budget, searchContentSummary) {
                 if (deviceMap.gateway) gateway = deviceMap.gateway + ' 智能网关';
                 if (deviceMap.comm) commModel = deviceMap.comm;
             }
-            // 行业特定型号
-            if (scene === 'smart-industry') {
-                sensors[0] = sensors[0] || 'SHT30 工业级温湿度传感器';
-                sensors[1] = sensors[1] || 'MQ-135 空气质量传感器';
-                sensors[2] = sensors[2] || 'MPU6050 振动加速度传感器';
-            } else if (scene === 'smart-agriculture') {
-                sensors[0] = sensors[0] || '土壤湿度传感器 (TDR-200)';
-                sensors[1] = sensors[1] || '光照传感器 (BH1750)';
-                sensors[2] = sensors[2] || 'CO₂传感器 (MH-Z19B)';
-            } else if (scene === 'smart-home') {
-                sensors[0] = sensors[0] || '人体红外传感器 (AM312)';
-                sensors[1] = sensors[1] || '门窗磁传感器 (MC-101)';
-                sensors[2] = sensors[2] || '温湿度传感器 (DHT22)';
-            } else if (scene === 'security') {
-                sensors[0] = sensors[0] || 'AI高清摄像头 (DS-2CD2T47)';
-                sensors[1] = sensors[1] || '红外对射探测器 (ABT-60)';
-                sensors[2] = sensors[2] || '振动光纤传感器';
-            } else if (scene === 'smart-city') {
-                sensors[0] = sensors[0] || '环境监测站 (AQM-650)';
-                sensors[1] = sensors[1] || '智能路灯控制器';
-                sensors[2] = sensors[2] || '井盖传感器 (LID-200)';
-            } else if (scene === 'smart-logistics') {
-                sensors[0] = sensors[0] || 'GPS定位器 (GT06N)';
-                sensors[1] = sensors[1] || '温湿度记录仪 (RC-5)';
-                sensors[2] = sensors[2] || '电子锁 (ES-300)';
+            // 深度行业特定型号
+            const hwDefaults = {
+                'smart-industry': {
+                    sensors: ['SHT30 工业级温湿度传感器 (IP67, ±0.2℃, -40~125℃)','MQ-135 空气质量传感器 (0-1000ppm, 响应<10s)','MPU6050 振动加速度传感器 (±16g, 三轴)','钳形电流互感器 BH-0.66 (0-100A, 精度0.5级)','气压变送器 PT-500 (0-1MPa, 4-20mA输出)'],
+                    gateway: '工业级边缘计算网关 (ARM Cortex-A53, 双网口, 支持Modbus/OPC-UA/MQTT/Profinet)',
+                    commModel: '5G工业模组 (移远RM500Q, SA/NSA双模)',
+                    power: '工业UPS+24V直流电源 (断电续航2h, 宽电压输入)'
+                },
+                'smart-agriculture': {
+                    sensors: ['土壤湿度传感器 TDR-200 (RS485, 0-100%体积含水率)','光照传感器 BH1750 (I²C, 1-65535lux, ±20%)','CO₂传感器 MH-Z19B (NDIR, 0-5000ppm, ±50ppm)','小型气象站 (风速0-60m/s + 风向0-360° + 降雨量0-200mm/h)','水质监测仪 (pH 0-14 + 溶解氧0-20mg/L + 电导率0-20mS/cm)'],
+                    gateway: '农业专用LoRaWAN网关 (SX1302芯片, 覆盖半径3km, IP67户外防护)',
+                    commModel: 'NB-IoT通信模组 (移远BC26, B5/B8频段)',
+                    power: '太阳能板(10W)+锂电池(10000mAh, 续航30天无日照)'
+                },
+                'smart-home': {
+                    sensors: ['人体红外传感器 AM312 (3.3V, 探测距离7m, 120°视角)','门窗磁传感器 MC-101 (ZigBee 3.0, 干簧管, 待机电流<10μA)','温湿度传感器 DHT22 (±0.5℃/±2%RH, 单总线)','光照传感器 BH1750 (1-65535lux, 自动量程)','空气质量传感器 MQ-135 (VOC/甲醛/氨气, 模拟输出)'],
+                    gateway: '智能家庭中枢网关 (ZigBee 3.0 + WiFi 6 + 蓝牙Mesh 5.2, 支持Matter协议)',
+                    commModel: 'WiFi 6模组 (ESP32-C3, 802.11ax, 低功耗)',
+                    power: 'USB 5V供电 + 纽扣电池CR2032备份 (断电续航7天)'
+                },
+                'security': {
+                    sensors: ['AI高清摄像头 DS-2CD2T47 (400万像素, H.265, 红外50m, IP67)','红外对射探测器 ABT-100 (双束/四束可选, 探测距离100m)','振动光纤 DTS-200 (分布式, 定位精度±3m, 防区100km)','门禁控制器 DS-K1T804 (人脸识别, 活体检测, 容量3000张)','紧急按钮 DS-PD1-EG-V2 (防拆报警, 无线传输, IP54)'],
+                    gateway: '安防专用汇聚网关 (支持GB/T28181/ONVIF/RTSP协议, 视频流转发)',
+                    commModel: '4G/5G通信模组 (广和通L610, 支持VoLTE)',
+                    power: 'PoE交换机供电 + UPS后备 (断电续航4h)'
+                },
+                'smart-city': {
+                    sensors: ['环境监测站 EM-500 (PM2.5/PM10/O₃/NO₂/SO₂/CO六参数)','智能路灯控制器 SLC-100 (单灯控制, 调光0-100%, 能耗计量)','井盖传感器 LID-200 (倾斜>15°报警, 位移>10cm报警, NB-IoT)','水位监测仪 SW-100 (雷达式, 量程0-40m, 精度±3mm)','噪声传感器 NS-200 (30-130dB, A/C计权, 频率分析)'],
+                    gateway: '城市级NB-IoT基站 (华为/中兴, 支持10万+终端接入)',
+                    commModel: 'NB-IoT通信模组 (移远BC95, B1/B3/B5/B8多频段)',
+                    power: '市电AC220V + 太阳能备用 (阴雨天续航7天)'
+                },
+                'smart-logistics': {
+                    sensors: ['GPS定位器 GT-06N (北斗+GPS双模, 定位精度2.5m, 内置备用电池)','温湿度记录仪 RC-5 (-40~80℃, ±0.5℃, 数据存储16000组)','电子锁 ES-300 (GPS远程开锁+电子密码, 防撬报警, IP65)','RFID读写器 UH-100 (超高频920-925MHz, 读取距离8m, EPC C1G2)','重量传感器 HX711 (0-50kg, 24bit ADC, 精度0.1%)'],
+                    gateway: '物流边缘计算网关 (4G Cat.4 + 蓝牙5.0 + RFID, 支持车载供电)',
+                    commModel: '4G Cat.1通信模组 (移远EC600N, 支持TCP/UDP/MQTT)',
+                    power: '车载12V/24V供电 + 内置备用电池 (断电续航48h)'
+                }
+            };
+            
+            const hw = hwDefaults[scene] || hwDefaults['smart-industry'];
+            // 用知识库/搜索数据覆盖默认型号
+            for (let i = 0; i < Math.min(sensors.length, hw.sensors.length); i++) {
+                sensors[i] = sensors[i] || hw.sensors[i];
+            }
+            gateway = gateway || hw.gateway;
+            commModel = commModel || hw.commModel;
+            
+            // 动态硬件参数（根据场景定制）
+            const paramProfiles = {
+                'smart-industry': ['精度±0.2℃, IP67防护等级, 宽温-40~125℃', '量程0-1000ppm, 响应<10s, TTL输出', '量程±16g, 三轴检测, I²C/SPI接口'],
+                'smart-agriculture': ['RS485输出, 0-100%体积含水率, 探针长度10cm', 'I²C接口, 1-65535lux, 自动量程切换', 'NDIR原理, 0-5000ppm, ±50ppm精度'],
+                'smart-home': ['3.3V供电, 探测距离7m, 120°视角, 低功耗<50μA', 'ZigBee 3.0, 干簧管原理, 待机电流<10μA', '±0.5℃/±2%RH精度, 单总线输出, 响应<2s'],
+                'security': ['400万像素, H.265编码, 红外夜视50m, IP67', '双束/四束可选, 探测距离100m, 防遮挡报警', '分布式传感, 定位精度±3m, 监测距离100km'],
+                'smart-city': ['PM2.5/PM10/O₃/NO₂/SO₂/CO六参数, 激光散射原理', '单灯独立控制, 调光0-100%, 能耗计量精度1级', '倾斜>15°/位移>10cm报警, NB-IoT直连云平台'],
+                'smart-logistics': ['北斗+GPS双模, 定位精度2.5m, 轨迹存储10万条', '-40~80℃量程, ±0.5℃精度, 数据存储16000组', 'GPS远程开锁+电子密码, 防撬报警, IP65防护']
+            };
+            const params = paramProfiles[scene] || paramProfiles['smart-industry'];
+            
+                        // 根据用户描述定制硬件选型
+            if (userDesc) {
+                if (userDesc.lowCost) {
+                    // 低成本：替换为经济型设备
+                    sensors[0] = sensors[0].replace(/工业级|高精度|IP67/g, '经济型');
+                    sensors[1] = sensors[1].replace(/工业级|高精度/g, '标准型');
+                }
+                if (userDesc.hasVideo) {
+                    // 添加摄像头到传感器列表
+                    if (!sensors.some(s => s.includes('摄像头') || s.includes('摄像') || s.includes('视频'))) {
+                        sensors.push('AI高清摄像头 (H.265, 红外夜视, 移动侦测)');
+                    }
+                }
+                if (userDesc.hasEdge) {
+                    gateway = gateway.replace(/网关/, '边缘计算网关');
+                }
             }
             return [
-                { type: '传感器', model: sensors[0], params: '精度±0.5℃, IP67防护等级', price: Math.round(bp*0.15), qty: Math.ceil(devices*0.6) },
-                { type: '传感器', model: sensors[1], params: '量程0-100%, 响应<2s', price: Math.round(bp*0.12), qty: Math.ceil(devices*0.4) },
-                { type: '传感器', model: sensors[2], params: '工业级, 宽温-40~85℃', price: Math.round(bp*0.18), qty: Math.ceil(devices*0.3) },
-                { type: '边缘网关', model: gateway, params: '多协议接入, 边缘计算, 断网续传', price: Math.round(bp*2.5), qty: Math.ceil(devices/30) },
-                { type: '通信模组', model: commModel, params: '低功耗, 广覆盖, 支持OTA', price: Math.round(bp*0.08), qty: devices },
-                { type: '供电模块', model: '太阳能+锂电池模组', params: '续航3年+, IP65, 免维护', price: Math.round(bp*0.1), qty: Math.ceil(devices*0.7) }
+                { type: '传感器', model: sensors[0], params: params[0], price: Math.round(bp*0.15), qty: Math.ceil(devices*0.6) },
+                { type: '传感器', model: sensors[1], params: params[1], price: Math.round(bp*0.12), qty: Math.ceil(devices*0.4) },
+                { type: '传感器', model: sensors[2], params: params[2], price: Math.round(bp*0.18), qty: Math.ceil(devices*0.3) },
+                { type: '边缘网关', model: gateway, params: '多协议接入, 边缘计算, 断网续传, 本地规则引擎', price: Math.round(bp*2.5), qty: Math.ceil(devices/30) },
+                { type: '通信模组', model: commModel, params: '低功耗, 广覆盖, 支持OTA远程升级', price: Math.round(bp*0.08), qty: devices },
+                { type: '供电模块', model: hw.power, params: '稳定供电, 断电续航, 远程电量监控', price: Math.round(bp*0.1), qty: Math.ceil(devices*0.7) }
             ];
         }
         function calculateCost(hardware, budget, searchContentSummary) {
@@ -1229,11 +1322,50 @@ function generateHardware(sceneData, devices, budget, searchContentSummary) {
                 { name:'运维服务', detail:'首年运维+技术支持+培训', amount: svc, percent: Math.round(svc/total*100) }
             ], total };
         }
-        function generateRisks(level, searchContentSummary, kbFiles) {
+        function generateRisks(level, searchContentSummary, kbFiles, userDesc) {
             const parsed = parseSearchData(searchContentSummary);
             const hasKB = kbFiles && kbFiles.length > 0;
-            // 基础风险
-            const base = [
+            // 根据场景定制基础风险
+            const scene = currentScene;
+            const sceneRisks = {
+                'smart-industry': [
+                    { level:'high', title:'工业协议兼容性风险', desc:'不同厂商设备Modbus/OPC-UA协议差异可能导致集成困难，建议提前进行POC验证和协议适配。' },
+                    { level:'high', title:'产线停机风险', desc:'设备部署可能影响生产线正常运行，建议在非生产时段施工，并制定应急预案。' },
+                    { level:'medium', title:'工业网络安全', desc:'工业控制系统暴露于网络可能遭受攻击，建议采用工业防火墙和网络隔离。' },
+                    { level:'medium', title:'电磁干扰', desc:'工业环境电磁干扰可能影响传感器数据准确性，建议选用工业级抗干扰设备。' }
+                ],
+                'smart-agriculture': [
+                    { level:'high', title:'恶劣环境适应', desc:'农业场景高温/高湿/暴晒环境可能加速设备老化，建议选用IP67+防护等级设备。' },
+                    { level:'high', title:'供电不稳定', desc:'农田区域市电覆盖不足，建议采用太阳能+锂电池供电方案，确保设备长期运行。' },
+                    { level:'medium', title:'通信覆盖不足', desc:'大面积农田可能存在LoRa/NB-IoT信号盲区，需提前进行信号覆盖测试。' },
+                    { level:'medium', title:'设备维护困难', desc:'分散部署的传感器维护成本高，建议建立远程运维体系和定期巡检计划。' }
+                ],
+                'smart-home': [
+                    { level:'high', title:'隐私泄露风险', desc:'家庭摄像头和传感器数据可能泄露用户隐私，建议本地存储优先，云端数据加密。' },
+                    { level:'medium', title:'多协议兼容', desc:'ZigBee/WiFi/蓝牙设备互联互通复杂度高，建议选用支持Matter标准的设备。' },
+                    { level:'medium', title:'网络依赖', desc:'智能家居高度依赖家庭网络，路由器故障将导致全屋设备失控，建议双路由冗余。' },
+                    { level:'low', title:'设备更新换代', desc:'智能家居产品更新频繁，建议选择主流品牌确保长期技术支持。' }
+                ],
+                'security': [
+                    { level:'high', title:'安防漏报风险', desc:'监控盲区或传感器故障可能导致安全事件漏报，建议多传感器交叉验证。' },
+                    { level:'high', title:'视频数据安全', desc:'监控视频流可能被截获，建议采用端到端加密和访问权限控制。' },
+                    { level:'medium', title:'误报率高', desc:'安防系统误报可能导致资源浪费，建议采用AI图像识别降低误报率。' },
+                    { level:'medium', title:'系统单点故障', desc:'安防平台宕机将导致全线失控，建议双机热备和异地容灾。' }
+                ],
+                'smart-city': [
+                    { level:'high', title:'大规模并发', desc:'城市级物联网平台需承载十万+设备并发，架构设计需考虑横向扩展能力。' },
+                    { level:'high', title:'市政协调复杂', desc:'涉及多部门多系统对接，协调难度大，建议成立专项工作组统一推进。' },
+                    { level:'medium', title:'数据孤岛', desc:'各部门数据标准不统一，建议建立城市级数据中台统一数据治理。' },
+                    { level:'medium', title:'施工影响', desc:'城市道路开挖施工影响市民生活，建议采用非开挖技术和夜间施工。' }
+                ],
+                'smart-logistics': [
+                    { level:'high', title:'冷链断链风险', desc:'温度传感器故障或网络中断可能导致冷链数据缺失，建议本地存储+云端同步双保险。' },
+                    { level:'high', title:'GPS信号丢失', desc:'地下仓库或隧道内GPS信号丢失导致位置盲区，建议结合蓝牙/UWB室内定位。' },
+                    { level:'medium', title:'设备电量耗尽', desc:'移动设备电池耗尽导致数据中断，建议选用低功耗设备和智能电量管理。' },
+                    { level:'medium', title:'数据实时性', desc:'物流追踪对数据实时性要求高，网络延迟可能导致信息滞后。' }
+                ]
+            };
+            const base = sceneRisks[scene] || [
                 { level:'high', title:'设备兼容性风险', desc:'不同厂商设备协议差异可能导致集成困难，建议提前进行POC验证。' },
                 { level:'high', title:'网络覆盖不足', desc:'部分部署区域可能存在信号盲区，需提前进行网络勘测和信号增强。' },
                 { level:'medium', title:'数据安全风险', desc:'物联网数据传输存在被截获风险，建议采用TLS加密传输和设备双向认证。' },
@@ -1260,9 +1392,18 @@ function generateHardware(sceneData, devices, budget, searchContentSummary) {
                 base.push({ level:'low', title:'供电可靠性', desc:'偏远地区设备供电不稳定，建议采用太阳能+锂电池多路供电方案。' });
                 base.push({ level:'low', title:'技术更新迭代', desc:'IoT技术快速演进，建议采用开放式架构，便于后续技术升级和功能扩展。' });
             }
+            
+            // 根据用户描述添加特定风险
+            if (userDesc) {
+                if (userDesc.hasVideo) base.push({ level:'medium', title:'视频存储容量风险', desc:'视频监控会产生大量存储需求，建议规划足够的存储容量和备份策略。' });
+                if (userDesc.hasAI) base.push({ level:'medium', title:'AI模型准确性风险', desc:'AI分析模型需要持续训练和优化，初期可能存在误报/漏报，建议设置人工复核机制。' });
+                if (userDesc.hasEdge) base.push({ level:'low', title:'边缘设备维护风险', desc:'边缘计算网关部署在远端，维护成本较高，建议建立远程运维能力和定期巡检计划。' });
+                if (userDesc.hasMobile) base.push({ level:'low', title:'移动端安全风险', desc:'移动端访问需要额外安全防护，建议启用双因素认证和设备绑定。' });
+                if (userDesc.lowCost) base.push({ level:'medium', title:'低成本方案性能风险', desc:'经济型设备可能在精度、寿命和稳定性上有所妥协，建议增加验收测试环节。' });
+            }
             return base;
         }
-        function generateImplementationSteps(sceneData, level, searchContentSummary) {
+        function generateImplementationSteps(sceneData, level, searchContentSummary, userDesc) {
             const parsed = parseSearchData(searchContentSummary);
             const kbInfo = extractKBInfo(kbFiles, currentScene);
             const hasSearch = parsed.devices && parsed.devices.length > 0;
@@ -1273,7 +1414,11 @@ function generateHardware(sceneData, devices, budget, searchContentSummary) {
                     { phase: '第一阶段：需求调研与方案设计', duration: '1-2周', tasks: ['现场勘察与需求确认', '设备选型' + searchRef, '整体方案架构设计'] },
                     { phase: '第二阶段：设备部署', duration: '2-3周', tasks: ['传感器安装与调试', '网关部署与网络接入', '通信联调与数据验证'] },
                     { phase: '第三阶段：平台接入与测试验收', duration: '1-2周', tasks: ['设备注册与数据对接', '基础功能测试', '项目验收与上线'] }
-                ];
+                ,
+                    ...(userDesc && userDesc.hasVideo ? { step: '视频监控部署', desc: '安装摄像头、配置NVR/云存储、调试AI分析、联调告警。', duration: '3-5天' } : []),
+                    ...(userDesc && userDesc.hasAI ? { step: 'AI模型训练', desc: '采集数据、训练模型、部署验证。', duration: '5-10天' } : []),
+                    ...(userDesc && userDesc.hasGIS ? { step: 'GIS配置', desc: '导入地图、标注设备、配置围栏。', duration: '2-3天' } : []),
+                    ...(userDesc && userDesc.hasDigitalTwin ? { step: '3D建模', desc: 'BIM建模、数据对接、虚实联动。', duration: '7-14天' } : [])];
             } else if (level === 'medium') {
                 const searchTasks = hasSearch ? ['参考行业最佳实践进行设备选型对比', '验证搜索数据中的设备型号兼容性'] : [];
                 return [
@@ -1281,7 +1426,11 @@ function generateHardware(sceneData, devices, budget, searchContentSummary) {
                     { phase: '第二阶段：设备部署与网络建设', duration: '3-4周', tasks: ['传感器布点与安装施工', '网关设备部署与上电调试', '通信网络建设与信号优化', '边缘计算节点配置', '设备入网与协议对接'] },
                     { phase: '第三阶段：平台接入与系统联调', duration: '2-3周', tasks: ['设备注册与接入平台', '数据采集规则配置', '业务逻辑与规则引擎开发', 'API接口对接与数据流转测试', '告警策略与联动规则配置'] },
                     { phase: '第四阶段：业务上线与运维交接', duration: '1-2周', tasks: ['用户培训与操作手册交付', '试运行与问题修复', '运维体系建立与交接', '项目验收与文档归档'] }
-                ];
+                ,
+                    ...(userDesc && userDesc.hasVideo ? { step: '视频监控部署', desc: '安装摄像头、配置NVR/云存储、调试AI分析、联调告警。', duration: '3-5天' } : []),
+                    ...(userDesc && userDesc.hasAI ? { step: 'AI模型训练', desc: '采集数据、训练模型、部署验证。', duration: '5-10天' } : []),
+                    ...(userDesc && userDesc.hasGIS ? { step: 'GIS配置', desc: '导入地图、标注设备、配置围栏。', duration: '2-3天' } : []),
+                    ...(userDesc && userDesc.hasDigitalTwin ? { step: '3D建模', desc: 'BIM建模、数据对接、虚实联动。', duration: '7-14天' } : [])];
             } else {
                 const kbTasks = hasKB ? ['参考《' + (kbFiles[0]?.name || '知识库') + '》中的' + kbInfo.sensors.slice(0,3).join('、') + '等设备部署方案', '借鉴行业标准项目的实施经验和验收标准'] : [];
                 const searchTasks2 = hasSearch ? ['调研' + parsed.devices.join('、') + '等设备在实际项目中的应用案例', '对比行业标准方案进行设备选型'] : [];
@@ -1296,7 +1445,7 @@ function generateHardware(sceneData, devices, budget, searchContentSummary) {
                 ];
             }
         }
-        function generateDataFlow(sceneData, level, searchContentSummary) {
+        function generateDataFlow(sceneData, level, searchContentSummary, userDesc) {
             const parsed = parseSearchData(searchContentSummary);
             const kbInfo = extractKBInfo(kbFiles, currentScene);
             const hasSearch = parsed.devices && parsed.devices.length > 0;
@@ -1318,7 +1467,8 @@ function generateHardware(sceneData, devices, budget, searchContentSummary) {
 
 4. 平台层智能处理：${sceneData.platform}提供设备接入管理、时序数据存储、实时流处理与规则引擎四大核心能力，支持百万级设备并发接入，数据处理延迟<200ms，内置异常检测与趋势预测算法。
 
-5. 应用层业务闭环：通过可视化大屏、移动端APP和API接口，实现"感知-分析-决策-执行"的完整闭环，支持告警自动触发、设备远程控制、报表自动生成等业务场景，指令下发延迟<1秒。`;
+5. 应用层业务闭环：通过可视化大屏、移动端APP和API接口，实现"感知-分析-决策-执行"的完整闭环，支持告警自动触发、设备远程控制、报表自动生成等业务场景，指令下发延迟<1秒。
+${userDesc && userDesc.hasVideo ? '视频数据独立处理：RTSP接入、AI分析、结构化推送。' : ''}${userDesc && userDesc.hasGIS ? 'GIS实时渲染设备位置和状态。' : ''}`;
             } else {
                 return `1. 感知层多维数据采集：部署${sceneData.sensors.join('、')}等全系列传感器${deviceRef}，采样频率可配置（100ms~60s），支持模拟量/数字量/脉冲量多种信号类型，内置自校准与自诊断功能，数据精度达99.9%。传感器支持本地边缘存储，断网情况下可持续缓存7天数据，网络恢复后自动补传。
 
@@ -1335,14 +1485,47 @@ function generateHardware(sceneData, devices, budget, searchContentSummary) {
         
         
         }
-        function generatePlatformModules(sceneData, level, searchContentSummary) {
+        function generatePlatformModules(sceneData, level, searchContentSummary, userDesc) {
             const parsed = parseSearchData(searchContentSummary);
             const kbInfo = extractKBInfo(kbFiles, currentScene);
             const hasSearch = parsed.devices && parsed.devices.length > 0;
             const hasKB = kbInfo.features && kbInfo.features.length > 0;
             const platformRef = parsed.platforms.length > 0 ? '（参考行业方案：' + parsed.platforms.slice(0,2).join('、') + '）' : '';
+            const scene = currentScene;
+            const simpleModules = {
+                'smart-industry': [
+                    { name: '设备管理', desc: '工业设备注册、在线状态监控、远程参数配置、OTA固件升级' },
+                    { name: '数据采集', desc: '实时采集PLC/传感器数据，支持Modbus/OPC-UA协议，数据存储周期可配置' },
+                    { name: '告警管理', desc: '设备异常阈值告警、短信/邮件通知、告警分级与升级机制' }
+                ],
+                'smart-agriculture': [
+                    { name: '设备管理', desc: '传感器/网关注册、在线状态监控、远程参数配置' },
+                    { name: '环境监测', desc: '土壤温湿度、光照、气象等数据实时采集与可视化' },
+                    { name: '告警通知', desc: '异常阈值告警、短信通知、灌溉联动控制' }
+                ],
+                'smart-home': [
+                    { name: '设备管理', desc: '智能设备注册、在线状态监控、场景联动配置' },
+                    { name: '场景控制', desc: '回家/离家/睡眠等场景一键切换，定时任务管理' },
+                    { name: '告警通知', desc: '安防告警、设备异常通知、手机推送' }
+                ],
+                'security': [
+                    { name: '设备管理', desc: '摄像头/门禁/传感器注册、在线状态监控' },
+                    { name: '视频预览', desc: '实时监控画面查看、录像回放、云台控制' },
+                    { name: '告警管理', desc: '移动侦测/入侵告警、联动录像、短信通知' }
+                ],
+                'smart-city': [
+                    { name: '设备管理', desc: '城市物联网设备注册、状态监控、批量配置' },
+                    { name: '数据监测', desc: '环境/管网/路灯等多维数据实时采集与展示' },
+                    { name: '告警调度', desc: '异常告警、工单派发、处置跟踪' }
+                ],
+                'smart-logistics': [
+                    { name: '设备管理', desc: 'GPS/温湿度/电子锁等设备注册与状态监控' },
+                    { name: '轨迹追踪', desc: '车辆/货物实时位置查看、历史轨迹回放' },
+                    { name: '告警通知', desc: '温度越限/电子锁异常/偏航告警、短信通知' }
+                ]
+            };
             if (level === 'simple') {
-                return [
+                return simpleModules[scene] || [
                     { name: '设备管理', desc: '设备注册、在线状态监控、远程查看' },
                     { name: '数据展示', desc: '实时数据查看、基础历史记录查询' },
                     { name: '告警通知', desc: '阈值告警、短信通知' }
@@ -1355,7 +1538,12 @@ function generateHardware(sceneData, devices, budget, searchContentSummary) {
                     { name: '数据分析与AI', desc: '集成机器学习平台，提供异常检测、趋势预测、聚类分析、关联挖掘等算法模型，支持自定义模型训练和在线部署，实现预测性维护和智能诊断。' },
                     { name: '可视化与大屏', desc: '内置拖拽式大屏设计器，支持GIS地图、3D模型、实时曲线、数据表格、告警列表等20+组件，支持Web/APP/微信小程序多端适配，支持自定义主题和权限分级控制。' },
                     { name: '安全管理', desc: '提供设备证书认证、RBAC访问控制模型、操作审计日志、数据传输加密、定期安全扫描和漏洞管理，满足基础合规要求。' }
-                ];
+                
+                    ...(userDesc && userDesc.hasVideo ? [{ name: '视频监控中心', desc: '集成多路视频流接入、实时预览、录像回放、AI视频分析（移动侦测、人脸识别、行为分析），支持云端存储和本地NVR混合架构。' }] : []),
+                    ...(userDesc && userDesc.hasAI ? [{ name: 'AI智能分析平台', desc: '集成机器学习算法，提供异常检测、趋势预测、聚类分析等能力，支持自定义模型训练和在线部署。' }] : []),
+                    ...(userDesc && userDesc.hasEdge ? [{ name: '边缘计算管理', desc: '边缘网关本地规则引擎、数据预处理、实时告警判断，支持云端模型下发和远程配置。' }] : []),
+                    ...(userDesc && userDesc.hasGIS ? [{ name: 'GIS地图与定位', desc: '基于GIS地图展示设备分布和实时状态，支持轨迹回放、电子围栏、热力图分析。' }] : []),
+                    ...(userDesc && userDesc.hasDigitalTwin ? [{ name: '3D数字孪生', desc: '构建物理设备的3D虚拟映射，支持实时状态仿真和故障预警可视化。' }] : []),];
             } else {
                 const searchModule = hasSearch ? `{ name: '行业方案适配', desc: '基于联网搜索的行业方案数据（参考设备：${parsed.devices.slice(0,3).join('、')}），自动匹配最佳实践架构，提供行业专属模板和参数配置建议。` : '';
                 return [
@@ -1372,7 +1560,7 @@ function generateHardware(sceneData, devices, budget, searchContentSummary) {
                 ];
             }
         }
-        function generateOptimizationTips(sceneData, level, searchContentSummary, kbFiles) {
+        function generateOptimizationTips(sceneData, level, searchContentSummary, kbFiles, userDesc) {
             const parsed = parseSearchData(searchContentSummary);
             const kbInfo = extractKBInfo(kbFiles, currentScene);
             const hasSearch = parsed.devices && parsed.devices.length > 0;
@@ -1386,13 +1574,21 @@ function generateHardware(sceneData, devices, budget, searchContentSummary) {
                     '标准化选型：优先选用支持MQTT等标准协议的设备，提高兼容性。',
                     '安全加固：启用TLS加密传输，实施设备认证。',
                     ...kbTips
-                ];
+                ,
+                    ...(userDesc && userDesc.hasVideo ? '视频监控建议：采用H.265编码降低存储压力，关键区域部署AI摄像头实现智能分析。' : []),
+                    ...(userDesc && userDesc.hasAI ? 'AI应用建议：初期使用预训练模型快速上线，积累数据后逐步训练行业专属模型。' : []),
+                    ...(userDesc && userDesc.hasEdge ? '边缘计算建议：关键告警规则下沉到边缘网关，降低云端依赖和响应延迟。' : []),
+                    ...(userDesc && userDesc.lowCost ? '成本控制建议：分阶段实施，先核心后扩展；选用标准化设备降低采购和维护成本。' : [])];
             } else if (level === 'medium') {
                 const searchTips = hasSearch ? ['根据行业方案调研，优先选用' + parsed.devices.slice(0,2).join('、') + '等成熟设备型号，降低项目风险。'] : [];
                 const kbTips2 = hasKB ? kbFiles.filter(f => f.content && f.content.length > 50 && !f.content.startsWith('[')).map(f => '参考资料库《' + f.name + '》行业方案，建议：' + f.content.substring(0, 120) + '...') : [];
                 return [
                     '分阶段部署：建议先选择1-2个典型场景进行小规模POC验证，验证技术可行性和业务价值后再批量推广，有效降低项目风险。',
-                    '标准化选型：优先选用支持MQTT、CoAP、HTTP等标准协议的设备，避免厂商锁定，提高系统兼容性和后期扩展能力。',
+                    '标准化选型：优先选用支持MQTT,
+                    ...(userDesc && userDesc.hasVideo ? '视频监控建议：采用H.265编码降低存储压力，关键区域部署AI摄像头实现智能分析。' : []),
+                    ...(userDesc && userDesc.hasAI ? 'AI应用建议：初期使用预训练模型快速上线，积累数据后逐步训练行业专属模型。' : []),
+                    ...(userDesc && userDesc.hasEdge ? '边缘计算建议：关键告警规则下沉到边缘网关，降低云端依赖和响应延迟。' : []),
+                    ...(userDesc && userDesc.lowCost ? '成本控制建议：分阶段实施，先核心后扩展；选用标准化设备降低采购和维护成本。' : [])、CoAP、HTTP等标准协议的设备，避免厂商锁定，提高系统兼容性和后期扩展能力。',
                     '安全加固：端到端启用TLS/SSL加密传输，实施设备双向证书认证，定期进行固件签名验证和安全漏洞扫描。',
                     '数据治理：建立数据分级分类管理制度，明确数据采集、传输、存储、使用、销毁的全生命周期管理策略。',
                     '运维管理：建议建立定期巡检制度，关注设备在线率、数据完整性和告警处理及时率等关键指标。',
@@ -1421,7 +1617,7 @@ function generateHardware(sceneData, devices, budget, searchContentSummary) {
                 ];
             }
         }
-        function generateROIAnalysis(budget, devices, sceneData) {
+        function generateROIAnalysis(budget, devices, sceneData, userDesc) {
             const totalInvest = budget * 10000;
             const annualSaving = Math.round(totalInvest * 0.25);
             const annualRevenueIncrease = Math.round(totalInvest * 0.15);
@@ -1451,6 +1647,215 @@ function generateHardware(sceneData, devices, budget, searchContentSummary) {
         }
         
         // 从知识库内容中提取结构化信息
+        
+        // 深度解析用户描述，提取场景特征和定制化需求
+        function parseUserDescription(desc) {
+            if (!desc || desc.length < 10) return { keywords: [], customReqs: [], budget: null, scale: null, industry: null };
+            const text = desc.toLowerCase();
+            const result = { keywords: [], customReqs: [], budget: null, scale: null, industry: null };
+            
+            // 提取行业关键词
+            const industries = {
+                '水利': ['水库','水利','大坝','防洪','灌溉','水文','河道','堤防','泵站','水闸','雨水情'],
+                '工业': ['工厂','制造','产线','车间','工业','生产','设备监控','能耗'],
+                '农业': ['农业','种植','养殖','灌溉','温室','大棚','农田','畜牧','水产'],
+                '城市': ['城市','市政','路灯','交通','停车','环保','噪声','空气','管网'],
+                '安防': ['安防','监控','门禁','消防','周界','巡逻','巡检','告警'],
+                '物流': ['物流','仓储','运输','冷链','配送','快递','供应链','追溯'],
+                '医疗': ['医疗','医院','病房','药房','体温','监护','急救'],
+                '教育': ['教育','学校','教室','实验室','图书馆','校园'],
+                '能源': ['能源','电力','电网','光伏','风电','储能','变电站']
+            };
+            for (const [ind, kws] of Object.entries(industries)) {
+                if (kws.some(kw => text.includes(kw))) { result.industry = ind; break; }
+            }
+            
+            // 提取规模
+            const scalePatterns = [/(\d+)\s*[台个座套]?,/, /(?:规模|设备|节点).*?(\d+)/, /(?:覆盖|管理|监测).*?(\d+)/];
+            for (const p of scalePatterns) {
+                const m = desc.match(p);
+                if (m) { result.scale = parseInt(m[1]); break; }
+            }
+            
+            // 提取预算
+            const budgetPatterns = [/(\d+)\s*万/, /预算.*?(\d+)/, /投资.*?(\d+)/];
+            for (const p of budgetPatterns) {
+                const m = desc.match(p);
+                if (m) { result.budget = parseInt(m[1]); break; }
+            }
+            
+            // 提取定制需求关键词
+            const reqKeywords = ['实时','远程','自动','智能','预警','报警','监控','分析','AI','大数据',
+                                '云平台','边缘计算','数字孪生','可视化','移动端','APP','小程序','大屏',
+                                '低成本','高可靠','低功耗','广覆盖','安全','加密','预测','优化'];
+            result.keywords = reqKeywords.filter(kw => text.includes(kw.toLowerCase()));
+            
+            // 提取具体定制需求
+            if (text.includes('远程') || text.includes('手机')) result.customReqs.push('需要远程监控和移动端访问能力');
+            if (text.includes('自动') || text.includes('智能')) result.customReqs.push('需要自动化控制和智能决策能力');
+            if (text.includes('预警') || text.includes('报警')) result.customReqs.push('需要多级预警和实时告警机制');
+            if (text.includes('低成本') || text.includes('预算')) result.customReqs.push('需要控制项目成本，优先选用性价比高的方案');
+            if (text.includes('安全') || text.includes('加密')) result.customReqs.push('需要加强数据安全和通信加密');
+            if (text.includes('大屏') || text.includes('可视化')) result.customReqs.push('需要建设数据可视化大屏展示系统');
+            if (text.includes('AI') || text.includes('预测')) result.customReqs.push('需要集成AI分析和预测能力');
+            if (text.includes('边缘') || text.includes('本地')) result.customReqs.push('需要边缘计算能力，支持本地决策');
+            
+            return result;
+        }
+        
+        // 根据知识库内容生成场景定制数据
+        function generateSceneFromKB(kbFiles, userDesc) {
+            if (!kbFiles || !kbFiles.length) return null;
+            
+            // 合并知识库内容
+            const allContent = kbFiles.filter(f => f.content && f.content.length > 100 && !f.content.startsWith('['))
+                .map(f => f.content).join('\n');
+            if (!allContent) return null;
+            
+            const content = allContent;
+            const text = content.toLowerCase();
+            
+            // 从知识库提取场景名称
+            let name = '物联网解决方案';
+            const titlePatterns = [/(.+?)\s*(?:解决)?方案/, /(.+?)\s*(?:建设|实施|设计)/];
+            for (const p of titlePatterns) {
+                const m = content.match(p);
+                if (m && m[1].length > 2 && m[1].length < 30) { name = m[1].trim(); break; }
+            }
+            
+            // 从知识库提取传感器/设备
+            const sensors = [];
+            const sensorPatterns = [
+                /([\w-]*(?:传感器|监测仪|监测点|计|表)[\w-]*)/g,
+                /(GNSS|RTU|遥测终端|雷达流速|多普勒|量水堰|墒情仪|摄像头|摄像机|球机)/g
+            ];
+            sensorPatterns.forEach(p => {
+                let m;
+                while ((m = p.exec(content)) !== null) {
+                    if (m[1].length > 2 && m[1].length < 30 && !sensors.includes(m[1])) sensors.push(m[1]);
+                }
+            });
+            
+            // 从知识库提取网关/终端
+            let gateway = '物联网网关';
+            const gatewayPatterns = /(RTU|遥测终端|边缘网关|汇聚网关|工业网关|智能网关|数据采集终端)/g;
+            let m;
+            while ((m = gatewayPatterns.exec(content)) !== null) {
+                gateway = m[1]; break;
+            }
+            
+            // 从知识库提取协议
+            const protocols = [];
+            ['NB-IoT','4G','5G','LoRa','WiFi','MQTT','Modbus','OPC-UA','CoAP','BACnet','HTTP','RS485','以太网','Cat.1','RedCap','PTN','PON'].forEach(kw => {
+                if (text.includes(kw.toLowerCase()) && !protocols.includes(kw)) protocols.push(kw);
+            });
+            
+            // 从知识库提取平台名称
+            let platform = '物联网云平台';
+            const platformPatterns = /(OneNET|OneCyber|阿里云|华为云|腾讯云|Azure|AWS|涂鸦智能|ThingsBoard)/g;
+            while ((m = platformPatterns.exec(content)) !== null) {
+                platform = m[1]; break;
+            }
+            
+            // 从知识库提取功能模块
+            const features = [];
+            const featureKws = ['雨水情监测','大坝安全监测','生态流量监测','视频监控','巡检管理','白蚁监测',
+                '四全管理','四预措施','四制体系','四管工作','数字孪生','领导驾驶舱','会商中心',
+                '设备管理','数据采集','规则引擎','告警通知','数据分析','AI分析','预测维护',
+                '可视化大屏','移动应用','GIS地图','视频监控','远程监控','自动化控制',
+                '设备监控','能耗管理','环境监测','安全监测','预警系统'];
+            featureKws.forEach(kw => {
+                if (text.includes(kw.toLowerCase()) && !features.includes(kw)) features.push(kw);
+            });
+            
+            // 从知识库提取方案描述
+            let desc = '基于行业最佳实践的物联网解决方案。';
+            const descPatterns = [/以[^，,。]+为切入口[^。]*。/, /实现[^。]*。/, /构建[^。]*。/];
+            for (const p of descPatterns) {
+                m = content.match(p);
+                if (m && m[0].length > 20 && m[0].length < 200) { desc = m[0]; break; }
+            }
+            
+            // 从知识库提取图标
+            let icon = '📡';
+            if (text.includes('水利') || text.includes('水库')) icon = '💧';
+            else if (text.includes('工业') || text.includes('制造')) icon = '🏭';
+            else if (text.includes('农业')) icon = '🌾';
+            else if (text.includes('城市')) icon = '🏙️';
+            else if (text.includes('安防')) icon = '🔒';
+            else if (text.includes('医疗')) icon = '🏥';
+            
+            return {
+                name, icon, 
+                sensors: sensors.slice(0, 6),
+                gateway, 
+                protocols: protocols.slice(0, 5),
+                platform, 
+                features: features.slice(0, 8),
+                desc,
+                content
+            };
+        }
+
+        // 深度解析用户描述，提取场景特征和定制需求
+        function parseUserDescription(desc) {
+            if (!desc || desc.length < 5) return { keywords: [], customReqs: [], budget: null, scale: null, industry: null, hasVideo: false, hasAI: false, hasEdge: false, hasMobile: false, hasGIS: false, hasDigitalTwin: false, lowCost: false, highReliability: false };
+            const text = desc.toLowerCase();
+            const r = { keywords: [], customReqs: [], budget: null, scale: null, industry: null, hasVideo: false, hasAI: false, hasEdge: false, hasMobile: false, hasGIS: false, hasDigitalTwin: false, lowCost: false, highReliability: false };
+            
+            // 行业识别
+            const industries = {
+                '水利': ['水库','水利','大坝','防洪','灌溉','水文','河道','堤防','泵站','水闸','雨水情','山洪','灌区','水资源','流域','河湖','排涝','蓄水'],
+                '工业': ['工厂','制造','产线','车间','工业','生产','plc','scada','dcs','mes','erp','设备监控','能耗','良率'],
+                '农业': ['农业','种植','养殖','灌溉','温室','大棚','农田','畜牧','水产','茶园','果园','土壤',' crop'],
+                '城市': ['城市','市政','路灯','交通','停车','环保','噪声','管网','垃圾','园林','城管','社区','智慧城'],
+                '安防': ['安防','监控','门禁','消防','周界','巡逻','视频','人脸','卡口','巡检','告警','安保'],
+                '物流': ['物流','仓储','运输','冷链','配送','快递','供应链','追溯','园区','港口','车队','货物'],
+                '医疗': ['医疗','医院','病房','药房','体温','监护','急救','门诊','护理','智慧医'],
+                '教育': ['教育','学校','教室','实验室','图书馆','校园','宿舍','食堂','智慧校'],
+                '能源': ['能源','电力','电网','光伏','风电','储能','变电站','配电','发电','新能源','微电网'],
+                '环保': ['环保','水质','大气','废气','废水','噪声','固废','生态','排污','监测站']
+            };
+            for (const [ind, kws] of Object.entries(industries)) {
+                if (kws.some(kw => text.includes(kw))) { r.industry = ind; break; }
+            }
+            
+            // 规模和预算
+            const m1 = desc.match(/(\d+)\s*[台个座套]设备/);
+            if (m1) r.scale = parseInt(m1[1]);
+            const m2 = desc.match(/(\d+)\s*万/);
+            if (m2) r.budget = parseInt(m2[1]);
+            
+            // 需求关键词
+            const kwList = ['实时','远程','自动','智能','预警','报警','监控','分析','AI','大数据','云平台','边缘计算',
+                           '数字孪生','可视化','移动端','APP','小程序','大屏','低成本','高可靠','低功耗','安全','加密',
+                           '预测','优化','无人机','巡检','机器人','3D','GIS','地图','定位','北斗','GPS','视频'];
+            r.keywords = kwList.filter(kw => text.includes(kw.toLowerCase()));
+            
+            // 功能标志
+            r.hasVideo = text.includes('视频') || text.includes('监控') || text.includes('摄像头');
+            r.hasAI = text.includes('AI') || text.includes('智能') || text.includes('预测') || text.includes('分析');
+            r.hasEdge = text.includes('边缘') || text.includes('本地') || text.includes('网关');
+            r.hasMobile = text.includes('移动') || text.includes('APP') || text.includes('手机') || text.includes('远程');
+            r.hasGIS = text.includes('GIS') || text.includes('地图') || text.includes('定位') || text.includes('北斗') || text.includes('GPS');
+            r.hasDigitalTwin = text.includes('数字孪生') || text.includes('3D') || text.includes('三维');
+            r.lowCost = text.includes('低成本') || text.includes('预算') || text.includes('经济') || text.includes('节省');
+            r.highReliability = text.includes('高可靠') || text.includes('稳定') || text.includes('安全') || text.includes('冗余');
+            
+            // 定制需求描述
+            if (r.hasMobile) r.customReqs.push('需要移动端远程监控能力');
+            if (r.hasAI) r.customReqs.push('需要AI智能分析和预测能力');
+            if (r.hasEdge) r.customReqs.push('需要边缘计算和本地决策能力');
+            if (r.hasVideo) r.customReqs.push('需要视频监控和AI分析能力');
+            if (r.hasGIS) r.customReqs.push('需要GIS地图和定位能力');
+            if (r.hasDigitalTwin) r.customReqs.push('需要3D可视化和数字孪生能力');
+            if (r.lowCost) r.customReqs.push('需要控制成本，优先选用性价比方案');
+            if (r.highReliability) r.customReqs.push('需要高可靠性设计，冗余备份');
+            
+            return r;
+        }
+
+        
         function extractKBInfo(kbFiles, scene) {
             const info = { sensors: [], platforms: [], protocols: [], features: [], architecture: [], implementation: [] };
             if (!kbFiles || !kbFiles.length) return info;

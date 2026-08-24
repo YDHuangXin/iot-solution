@@ -334,6 +334,62 @@ async function fetchSceneData(scene, kbFiles = [], description = '') {
         }
     }
 
+    // 根据用户描述动态调整方案
+    if (description && description.length > 10) {
+        const descLower = description.toLowerCase();
+        
+        // 行业识别 - 调整传感器
+        const industryMap = {
+            '水利': { sensors: ['雷达水位计', '雨量计', '渗压计', 'GNSS位移监测站', '白蚁监测仪', '视频AI监控球机'], gateway: 'RTU遥测终端 (支持4G/光纤双通道)', protocols: ['MQTT', '4G', '光纤'] },
+            '工业': { sensors: ['SHT30 工业温湿度传感器', '振动加速度传感器', '电流互感器', '压力变送器', '气体探测器'], gateway: '工业级边缘计算网关', protocols: ['Modbus', 'OPC-UA', 'MQTT'] },
+            '农业': { sensors: ['土壤墒情仪', '光照传感器', '气象站', '水质监测仪', 'CO2传感器'], gateway: 'LoRaWAN农业网关', protocols: ['LoRaWAN', 'NB-IoT', 'MQTT'] },
+            '城市': { sensors: ['环境监测站', '智能路灯控制器', '井盖传感器', '噪声传感器', '水位监测仪'], gateway: '城市级NB-IoT基站', protocols: ['NB-IoT', '5G', 'MQTT'] },
+            '安防': { sensors: ['AI高清摄像头', '红外对射探测器', '门禁控制器', '紧急按钮', '烟感探测器'], gateway: '安防汇聚网关', protocols: ['TCP/IP', 'GB/T28181', 'ONVIF'] },
+            '物流': { sensors: ['GPS定位器', '温湿度记录仪', '电子锁', 'RFID读写器', '重量传感器'], gateway: '物流边缘网关', protocols: ['4G', 'BLE', 'RFID'] },
+            '医疗': { sensors: ['体温监测仪', '血氧传感器', '环境温湿度传感器', '空气质量监测仪', '紧急呼叫按钮'], gateway: '医疗物联网网关', protocols: ['WiFi', 'BLE', 'MQTT'] },
+            '教育': { sensors: ['环境温湿度传感器', 'CO2监测仪', '光照传感器', ' occupancy传感器', '空气质量监测'], gateway: '校园物联网网关', protocols: ['WiFi', 'BLE', 'MQTT'] },
+            '能源': { sensors: ['智能电表', '电流互感器', '电压传感器', '温度传感器', '功率分析仪'], gateway: '能源管理网关', protocols: ['Modbus', 'DL/T645', 'MQTT'] },
+            '环保': { sensors: ['水质多参数监测仪', '大气监测站', '噪声传感器', '流量计', '烟气分析仪'], gateway: '环保监测网关', protocols: ['4G', 'HJ212', 'MQTT'] }
+        };
+        
+        for (const [ind, cfg] of Object.entries(industryMap)) {
+            if (cfg.sensors.some(s => descLower.includes(s.toLowerCase().substring(0, 4))) || 
+                ['水利','工业','农业','城市','安防','物流','医疗','教育','能源','环保'].some(k => descLower.includes(k))) {
+                // 检测到行业关键词，使用行业特定配置
+                const matched = Object.keys(industryMap).find(k => descLower.includes(k.toLowerCase()));
+                if (matched) {
+                    const mc = industryMap[matched];
+                    sensors = mc.sensors.slice(0, 5);
+                    gateway = mc.gateway;
+                    protocols = mc.protocols;
+                    desc = `面向${matched}场景的物联网解决方案，结合行业最佳实践和用户定制需求。`;
+                    break;
+                }
+            }
+        }
+        
+        // 功能关键词 - 调整特性
+        if (descLower.includes('视频') || descLower.includes('监控') || descLower.includes('摄像头')) {
+            if (!features.includes('视频监控')) features.push('视频监控');
+            if (!features.includes('AI视频分析')) features.push('AI视频分析');
+        }
+        if (descLower.includes('ai') || descLower.includes('智能') || descLower.includes('预测')) {
+            if (!features.includes('AI智能分析')) features.push('AI智能分析');
+            if (!features.includes('预测维护')) features.push('预测维护');
+        }
+        if (descLower.includes('边缘') || descLower.includes('本地')) {
+            if (!features.includes('边缘计算')) features.push('边缘计算');
+        }
+        if (descLower.includes('gis') || descLower.includes('地图') || descLower.includes('定位')) {
+            if (!features.includes('GIS地图')) features.push('GIS地图');
+            if (!features.includes('定位追踪')) features.push('定位追踪');
+        }
+        if (descLower.includes('数字孪生') || descLower.includes('3d') || descLower.includes('三维')) {
+            if (!features.includes('数字孪生')) features.push('数字孪生');
+            if (!features.includes('3D可视化')) features.push('3D可视化');
+        }
+    }
+
     // 拼接搜索到的真实数据用于方案生成
     let searchContentSummary = '';
     if (searchSuccess && webContent.length > 200) {
@@ -501,17 +557,31 @@ app.delete('/api/knowledge/:id', authMiddleware, async (req, res) => {
 // ========== 联网搜索方案数据 API ==========
 app.post('/api/generate/scene-data', authMiddleware, async (req, res) => {
     try {
-        const { scene, kbFileIds, description } = req.body;
+        const { scene, kbFileIds, kbContents, description } = req.body;
         if (!scene) return res.status(400).json({ error: '缺少场景参数' });
 
-        // 查询资料库文件内容
+        // 查询资料库文件内容（数据库中的）
         let kbFiles = [];
         if (kbFileIds && kbFileIds.length > 0) {
-            const result = await pool.query('SELECT original_name, content, tags, summary FROM knowledge_files WHERE id = ANY($1) AND user_id = $2', [kbFileIds, req.user.id]);
-            kbFiles = result.rows.map(r => ({
-                ...r,
-                tags: typeof r.tags === 'string' ? JSON.parse(r.tags) : r.tags || []
-            }));
+            try {
+                const result = await pool.query('SELECT original_name, content, tags, summary FROM knowledge_files WHERE id = ANY($1) AND user_id = $2', [kbFileIds, req.user.id]);
+                kbFiles = result.rows.map(r => ({
+                    ...r,
+                    tags: typeof r.tags === 'string' ? JSON.parse(r.tags) : r.tags || []
+                }));
+            } catch(e) {
+                console.log('知识库查询失败，使用前端内容:', e.message);
+            }
+        }
+        
+        // 合并前端传来的知识库内容（本地上传的文件）
+        if (kbContents && kbContents.length > 0) {
+            for (const kc of kbContents) {
+                const exists = kbFiles.some(f => f.original_name === kc.name || f.name === kc.name);
+                if (!exists) {
+                    kbFiles.push({ original_name: kc.name, name: kc.name, content: kc.content || '', tags: kc.tags || [] });
+                }
+            }
         }
 
         const data = await fetchSceneData(scene, kbFiles, description);
