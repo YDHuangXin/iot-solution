@@ -1413,8 +1413,7 @@ function generateHardware(sceneData, devices, budget, searchContentSummary, user
                 return [
                     { phase: '第一阶段：需求调研与方案设计', duration: '1-2周', tasks: ['现场勘察与需求确认', '设备选型' + searchRef, '整体方案架构设计'] },
                     { phase: '第二阶段：设备部署', duration: '2-3周', tasks: ['传感器安装与调试', '网关部署与网络接入', '通信联调与数据验证'] },
-                    { phase: '第三阶段：平台接入与测试验收', duration: '1-2周', tasks: ['设备注册与数据对接', '基础功能测试', '项目验收与上线'] }
-                ,
+                    { phase: '第三阶段：平台接入与测试验收', duration: '1-2周', tasks: ['设备注册与数据对接', '基础功能测试', '项目验收与上线'] },
                     ...(userDesc && userDesc.hasVideo ? { step: '视频监控部署', desc: '安装摄像头、配置NVR/云存储、调试AI分析、联调告警。', duration: '3-5天' } : []),
                     ...(userDesc && userDesc.hasAI ? { step: 'AI模型训练', desc: '采集数据、训练模型、部署验证。', duration: '5-10天' } : []),
                     ...(userDesc && userDesc.hasGIS ? { step: 'GIS配置', desc: '导入地图、标注设备、配置围栏。', duration: '2-3天' } : []),
@@ -1425,8 +1424,7 @@ function generateHardware(sceneData, devices, budget, searchContentSummary, user
                     { phase: '第一阶段：需求调研与方案设计', duration: '2-3周', tasks: ['现场勘察与需求调研', '业务场景梳理与痛点分析', '网络环境评估与覆盖测试', '设备选型对比与POC验证', '整体方案架构设计评审', ...searchTasks] },
                     { phase: '第二阶段：设备部署与网络建设', duration: '3-4周', tasks: ['传感器布点与安装施工', '网关设备部署与上电调试', '通信网络建设与信号优化', '边缘计算节点配置', '设备入网与协议对接'] },
                     { phase: '第三阶段：平台接入与系统联调', duration: '2-3周', tasks: ['设备注册与接入平台', '数据采集规则配置', '业务逻辑与规则引擎开发', 'API接口对接与数据流转测试', '告警策略与联动规则配置'] },
-                    { phase: '第四阶段：业务上线与运维交接', duration: '1-2周', tasks: ['用户培训与操作手册交付', '试运行与问题修复', '运维体系建立与交接', '项目验收与文档归档'] }
-                ,
+                    { phase: '第四阶段：业务上线与运维交接', duration: '1-2周', tasks: ['用户培训与操作手册交付', '试运行与问题修复', '运维体系建立与交接', '项目验收与文档归档'] },
                     ...(userDesc && userDesc.hasVideo ? { step: '视频监控部署', desc: '安装摄像头、配置NVR/云存储、调试AI分析、联调告警。', duration: '3-5天' } : []),
                     ...(userDesc && userDesc.hasAI ? { step: 'AI模型训练', desc: '采集数据、训练模型、部署验证。', duration: '5-10天' } : []),
                     ...(userDesc && userDesc.hasGIS ? { step: 'GIS配置', desc: '导入地图、标注设备、配置围栏。', duration: '2-3天' } : []),
@@ -1537,7 +1535,7 @@ ${userDesc && userDesc.hasVideo ? '视频数据独立处理：RTSP接入、AI分
                     { name: '规则引擎与自动化', desc: '提供可视化规则编排界面，支持阈值告警、复合条件触发、设备联动、定时任务、Webhook回调、消息队列推送等10+触发类型，规则执行引擎延迟<100ms，支持规则导入导出和版本管理。' },
                     { name: '数据分析与AI', desc: '集成机器学习平台，提供异常检测、趋势预测、聚类分析、关联挖掘等算法模型，支持自定义模型训练和在线部署，实现预测性维护和智能诊断。' },
                     { name: '可视化与大屏', desc: '内置拖拽式大屏设计器，支持GIS地图、3D模型、实时曲线、数据表格、告警列表等20+组件，支持Web/APP/微信小程序多端适配，支持自定义主题和权限分级控制。' },
-                    { name: '安全管理', desc: '提供设备证书认证、RBAC访问控制模型、操作审计日志、数据传输加密、定期安全扫描和漏洞管理，满足基础合规要求。' }
+                    { name: '安全管理', desc: '提供设备证书认证、RBAC访问控制模型、操作审计日志、数据传输加密、定期安全扫描和漏洞管理，满足基础合规要求。' },
                 
                     ...(userDesc && userDesc.hasVideo ? [{ name: '视频监控中心', desc: '集成多路视频流接入、实时预览、录像回放、AI视频分析（移动侦测、人脸识别、行为分析），支持云端存储和本地NVR混合架构。' }] : []),
                     ...(userDesc && userDesc.hasAI ? [{ name: 'AI智能分析平台', desc: '集成机器学习算法，提供异常检测、趋势预测、聚类分析等能力，支持自定义模型训练和在线部署。' }] : []),
@@ -1584,11 +1582,11 @@ ${userDesc && userDesc.hasVideo ? '视频数据独立处理：RTSP接入、AI分
                 const kbTips2 = hasKB ? kbFiles.filter(f => f.content && f.content.length > 50 && !f.content.startsWith('[')).map(f => '参考资料库《' + f.name + '》行业方案，建议：' + f.content.substring(0, 120) + '...') : [];
                 return [
                     '分阶段部署：建议先选择1-2个典型场景进行小规模POC验证，验证技术可行性和业务价值后再批量推广，有效降低项目风险。',
-                    '标准化选型：优先选用支持MQTT,
+                    '标准化选型：优先选用支持MQTT、CoAP、HTTP等标准协议的设备，避免厂商锁定，提高系统兼容性和后期扩展能力。',
                     ...(userDesc && userDesc.hasVideo ? '视频监控建议：采用H.265编码降低存储压力，关键区域部署AI摄像头实现智能分析。' : []),
                     ...(userDesc && userDesc.hasAI ? 'AI应用建议：初期使用预训练模型快速上线，积累数据后逐步训练行业专属模型。' : []),
                     ...(userDesc && userDesc.hasEdge ? '边缘计算建议：关键告警规则下沉到边缘网关，降低云端依赖和响应延迟。' : []),
-                    ...(userDesc && userDesc.lowCost ? '成本控制建议：分阶段实施，先核心后扩展；选用标准化设备降低采购和维护成本。' : [])、CoAP、HTTP等标准协议的设备，避免厂商锁定，提高系统兼容性和后期扩展能力。',
+                    ...(userDesc && userDesc.lowCost ? '成本控制建议：分阶段实施，先核心后扩展；选用标准化设备降低采购和维护成本。' : []),
                     '安全加固：端到端启用TLS/SSL加密传输，实施设备双向证书认证，定期进行固件签名验证和安全漏洞扫描。',
                     '数据治理：建立数据分级分类管理制度，明确数据采集、传输、存储、使用、销毁的全生命周期管理策略。',
                     '运维管理：建议建立定期巡检制度，关注设备在线率、数据完整性和告警处理及时率等关键指标。',
