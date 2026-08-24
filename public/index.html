@@ -554,11 +554,7 @@
                                     <button class="btn-action primary" onclick="exportWord()">📥 导出Word</button>
                                 </div>
                             </div>
-                            <div class="solution-version-tabs" id="versionTabs" style="display:flex;gap:4px;margin-bottom:12px;background:rgba(15,23,42,0.5);border-radius:10px;padding:4px;width:fit-content;">
-                                <button class="solution-version-tab active" data-version="0" onclick="switchVersion(0)">📝 简单方案</button>
-                                <button class="solution-version-tab" data-version="1" onclick="switchVersion(1)">📋 中等方案</button>
-                                <button class="solution-version-tab" data-version="2" onclick="switchVersion(2)">📚 复杂方案</button>
-                            </div>
+
                             <style>
                                 .solution-version-tab { padding:8px 16px;border-radius:8px;font-size:0.82rem;font-weight:600;cursor:pointer;border:none;background:transparent;color:var(--text-muted);transition:all 0.3s; }
                                 .solution-version-tab:hover { color:var(--text); }
@@ -691,10 +687,7 @@ const API = window.location.origin;
         let authToken = localStorage.getItem('iot_token');
         let currentUser = null;
         let currentScene = 'smart-industry';
-        let currentComplexity = 'medium'; // simple | medium | complex
         let currentSolution = null;
-        let currentVersion = 0; // 0=simple, 1=medium, 2=complex
-        let solutionVersions = []; // [{simple, medium, complex}, ...]
         let sceneDataCache = {}; // 缓存场景数据
         let kbFiles = [];
         let kbPage = 1;
@@ -719,12 +712,7 @@ const API = window.location.origin;
             });
         }
         function initComplexityTags() {
-            document.querySelectorAll('#complexityTags .scene-tag').forEach(tag => {
-                tag.addEventListener('click', () => {
-                    document.querySelectorAll('#complexityTags .scene-tag').forEach(t => t.classList.remove('active'));
-                    tag.classList.add('active'); currentComplexity = tag.dataset.level;
-                });
-            });
+            // 复杂度标签保留展示，默认始终生成三档方案
         }
         function initRangeSliders() {
             document.getElementById('budget').addEventListener('input', e => document.getElementById('budgetValue').textContent = e.target.value + '万');
@@ -996,12 +984,8 @@ const API = window.location.origin;
             const medium = buildSolution(sceneData, budget, devices, 'medium');
             const complex = buildSolution(sceneData, budget, devices, 'complex');
 
-            const versionGroup = { simple, medium, complex };
-            solutionVersions.push(versionGroup);
-            currentVersion = currentComplexity === 'simple' ? 0 : currentComplexity === 'medium' ? 1 : 2;
-
-            // 步骤3：显示
-            currentSolution = versionGroup[currentVersion === 0 ? 'simple' : currentVersion === 1 ? 'medium' : 'complex'];
+            // 步骤3：显示复杂方案（完整版）
+            currentSolution = complex;
             renderSolution(currentSolution);
 
             // 显示数据来源 badge
@@ -1026,13 +1010,13 @@ const API = window.location.origin;
                         description: desc,
                         content: currentSolution,
                         kb_file_ids: kbFiles.map(f => f.name),
-                        version: solutionVersions.length
+                        version: 'complex'
                     })
                 });
             } catch {}
 
             btn.classList.remove('loading');
-            showToast('三档方案生成成功！可在上方切换查看');
+            showToast('物联网方案生成成功！已输出完整版方案');
             } catch(e) {
                 btn.classList.remove('loading');
                 hideLoading();
@@ -1646,61 +1630,6 @@ ${userDesc && userDesc.hasVideo ? '视频数据独立处理：RTSP接入、AI分
         // 从知识库内容中提取结构化信息
         
         // 深度解析用户描述，提取场景特征和定制化需求
-        function parseUserDescription(desc) {
-            if (!desc || desc.length < 10) return { keywords: [], customReqs: [], budget: null, scale: null, industry: null };
-            const text = desc.toLowerCase();
-            const result = { keywords: [], customReqs: [], budget: null, scale: null, industry: null };
-            
-            // 提取行业关键词
-            const industries = {
-                '水利': ['水库','水利','大坝','防洪','灌溉','水文','河道','堤防','泵站','水闸','雨水情'],
-                '工业': ['工厂','制造','产线','车间','工业','生产','设备监控','能耗'],
-                '农业': ['农业','种植','养殖','灌溉','温室','大棚','农田','畜牧','水产'],
-                '城市': ['城市','市政','路灯','交通','停车','环保','噪声','空气','管网'],
-                '安防': ['安防','监控','门禁','消防','周界','巡逻','巡检','告警'],
-                '物流': ['物流','仓储','运输','冷链','配送','快递','供应链','追溯'],
-                '医疗': ['医疗','医院','病房','药房','体温','监护','急救'],
-                '教育': ['教育','学校','教室','实验室','图书馆','校园'],
-                '能源': ['能源','电力','电网','光伏','风电','储能','变电站']
-            };
-            for (const [ind, kws] of Object.entries(industries)) {
-                if (kws.some(kw => text.includes(kw))) { result.industry = ind; break; }
-            }
-            
-            // 提取规模
-            const scalePatterns = [/(\d+)\s*[台个座套]?,/, /(?:规模|设备|节点).*?(\d+)/, /(?:覆盖|管理|监测).*?(\d+)/];
-            for (const p of scalePatterns) {
-                const m = desc.match(p);
-                if (m) { result.scale = parseInt(m[1]); break; }
-            }
-            
-            // 提取预算
-            const budgetPatterns = [/(\d+)\s*万/, /预算.*?(\d+)/, /投资.*?(\d+)/];
-            for (const p of budgetPatterns) {
-                const m = desc.match(p);
-                if (m) { result.budget = parseInt(m[1]); break; }
-            }
-            
-            // 提取定制需求关键词
-            const reqKeywords = ['实时','远程','自动','智能','预警','报警','监控','分析','AI','大数据',
-                                '云平台','边缘计算','数字孪生','可视化','移动端','APP','小程序','大屏',
-                                '低成本','高可靠','低功耗','广覆盖','安全','加密','预测','优化'];
-            result.keywords = reqKeywords.filter(kw => text.includes(kw.toLowerCase()));
-            
-            // 提取具体定制需求
-            if (text.includes('远程') || text.includes('手机')) result.customReqs.push('需要远程监控和移动端访问能力');
-            if (text.includes('自动') || text.includes('智能')) result.customReqs.push('需要自动化控制和智能决策能力');
-            if (text.includes('预警') || text.includes('报警')) result.customReqs.push('需要多级预警和实时告警机制');
-            if (text.includes('低成本') || text.includes('预算')) result.customReqs.push('需要控制项目成本，优先选用性价比高的方案');
-            if (text.includes('安全') || text.includes('加密')) result.customReqs.push('需要加强数据安全和通信加密');
-            if (text.includes('大屏') || text.includes('可视化')) result.customReqs.push('需要建设数据可视化大屏展示系统');
-            if (text.includes('AI') || text.includes('预测')) result.customReqs.push('需要集成AI分析和预测能力');
-            if (text.includes('边缘') || text.includes('本地')) result.customReqs.push('需要边缘计算能力，支持本地决策');
-            
-            return result;
-        }
-        
-        // 根据知识库内容生成场景定制数据
         function generateSceneFromKB(kbFiles, userDesc) {
             if (!kbFiles || !kbFiles.length) return null;
             
@@ -1796,15 +1725,76 @@ ${userDesc && userDesc.hasVideo ? '视频数据独立处理：RTSP接入、AI分
 
         // 深度解析用户描述，提取场景特征和定制需求
         function parseUserDescription(desc) {
-            if (!desc || desc.length < 5) return { keywords: [], customReqs: [], budget: null, scale: null, industry: null, hasVideo: false, hasAI: false, hasEdge: false, hasMobile: false, hasGIS: false, hasDigitalTwin: false, lowCost: false, highReliability: false };
+            if (!desc || desc.length < 5) return { keywords: [], customReqs: [], budget: null, scale: null, industry: null, hasVideo: false, hasAI: false, hasEdge: false, hasMobile: false, hasGIS: false, hasDigitalTwin: false, lowCost: false, highReliability: false, locations: [], timeRanges: [], persons: [], organizations: [], searchKeywords: [] };
             const text = desc.toLowerCase();
-            const r = { keywords: [], customReqs: [], budget: null, scale: null, industry: null, hasVideo: false, hasAI: false, hasEdge: false, hasMobile: false, hasGIS: false, hasDigitalTwin: false, lowCost: false, highReliability: false };
+            const r = { keywords: [], customReqs: [], budget: null, scale: null, industry: null, hasVideo: false, hasAI: false, hasEdge: false, hasMobile: false, hasGIS: false, hasDigitalTwin: false, lowCost: false, highReliability: false, locations: [], timeRanges: [], persons: [], organizations: [], searchKeywords: [] };
             
+            // ========== 实体提取（新增） ==========
+            // 提取地点/位置关键字
+            const locationPatterns = [
+                /(?:位于|部署在|覆盖|建设在|适用于|针对)([^，。,.、;；\n]+)/g,
+                /(北京|上海|广州|深圳|杭州|南京|成都|重庆|武汉|西安|郑州|长沙|青岛|大连|厦门|宁波|苏州|无锡|天津|东莞|佛山|合肥|南昌|贵阳|昆明|南宁|哈尔滨|长春|沈阳|济南|太原|石家庄|兰州|乌鲁木齐|呼和浩特|拉萨|银川|西宁|海口|三亚|烟台|威海|潍坊|淄博|临沂|徐州|南通|常州|镇江|扬州|泰州|盐城|淮安|宿迁|连云港|温州|嘉兴|湖州|绍兴|金华|台州|衢州|丽水|舟山|福州|泉州|漳州|莆田|三明|南平|龙岩|宁德|桂林|柳州|北海|防城港|钦州|贵港|玉林|百色|贺州|河池|来宾|崇左|湛江|茂名|肇庆|惠州|江门|韶关|梅州|汕头|潮州|揭阳|汕尾|阳江|云浮|中山|珠海|东莞|三亚|海口|儋州|文昌|琼海|万宁|东方|五指山|乐东|陵水|澄迈|临高|白沙|昌江|屯昌|琼中|保亭|三沙)[^，。,.]*/g,
+                /(?:省|市|区|县|镇|村|园区|开发区|高新区|新区|新区|新区)[^，。,.]*/g,
+                /(?:长三角|珠三角|京津冀|成渝|长江经济带|黄河流域|一带一路|大湾区)[^，。,.]*/g
+            ];
+            locationPatterns.forEach(p => {
+                let m;
+                while ((m = p.exec(desc)) !== null) {
+                    const loc = m[0].replace(/^(?:位于|部署在|覆盖|建设在|适用于|针对)/, '').trim();
+                    if (loc.length > 0 && loc.length < 30 && !r.locations.includes(loc)) r.locations.push(loc);
+                }
+            });
+            
+            // 提取时间/周期关键字
+            const timePatterns = [
+                /(\d{4})年/g,
+                /((?:第)?[一二三四五六七八九十]+季度|(?:上|下|今|明|去)半年)/g,
+                /((?:早|中|晚|全)天|每周|每月|每季|每年|实时|定时)/g,
+                /(\d+)[天周月年](?:内|后|前|完成|实现)/g,
+                /(?:工期|周期|期限|计划|预计|目标|要求)(?:为|是)?([^，。,.]{2,15})/g
+            ];
+            timePatterns.forEach(p => {
+                let m;
+                while ((m = p.exec(desc)) !== null) {
+                    if (m[0].length < 30 && !r.timeRanges.includes(m[0])) r.timeRanges.push(m[0]);
+                }
+            });
+            
+            // 提取人物/角色关键字
+            const personPatterns = [
+                /(?:负责|管理|操作|使用|面向|服务)([^，。,.]{1,10}(?:人员|工人|员工|用户|居民|村民|学生|医生|护士|老师|领导|主管|经理|主任|工程师|技术员|操作员|管理员|游客|顾客|客户|患者|业主|物业|保安|保洁|司机))/g,
+                /((?:[\u4e00-\u9fa5]{2,4})(?:先生|女士|经理|主任|工|总))/g
+            ];
+            personPatterns.forEach(p => {
+                let m;
+                while ((m = p.exec(desc)) !== null) {
+                    const person = m[1].trim();
+                    if (person.length > 0 && person.length < 20 && !r.persons.includes(person)) r.persons.push(person);
+                }
+            });
+            
+            // 提取组织/机构关键字
+            const orgPatterns = [
+                /((?:[\u4e00-\u9fa5]{2,15})(?:局|委|办|公司|集团|工厂|学校|医院|园区|社区|物业|中心|部门|协会|研究院|所|站|场))/g
+            ];
+            orgPatterns.forEach(p => {
+                let m;
+                while ((m = p.exec(desc)) !== null) {
+                    const org = m[1].trim();
+                    if (org.length > 2 && org.length < 25 && !r.organizations.includes(org)) r.organizations.push(org);
+                }
+            });
+            
+            // 构建联网搜索关键词
+            r.searchKeywords = [...r.locations, ...r.organizations];
+            if (r.industry) r.searchKeywords.push(r.industry + '物联网');
+            
+            // ========== 原有功能 ==========
             // 行业识别
             const industries = {
                 '水利': ['水库','水利','大坝','防洪','灌溉','水文','河道','堤防','泵站','水闸','雨水情','山洪','灌区','水资源','流域','河湖','排涝','蓄水'],
                 '工业': ['工厂','制造','产线','车间','工业','生产','plc','scada','dcs','mes','erp','设备监控','能耗','良率'],
-                '农业': ['农业','种植','养殖','灌溉','温室','大棚','农田','畜牧','水产','茶园','果园','土壤',' crop'],
+                '农业': ['农业','种植','养殖','灌溉','温室','大棚','农田','畜牧','水产','茶园','果园','土壤','crop'],
                 '城市': ['城市','市政','路灯','交通','停车','环保','噪声','管网','垃圾','园林','城管','社区','智慧城'],
                 '安防': ['安防','监控','门禁','消防','周界','巡逻','视频','人脸','卡口','巡检','告警','安保'],
                 '物流': ['物流','仓储','运输','冷链','配送','快递','供应链','追溯','园区','港口','车队','货物'],
@@ -1848,6 +1838,9 @@ ${userDesc && userDesc.hasVideo ? '视频数据独立处理：RTSP接入、AI分
             if (r.hasDigitalTwin) r.customReqs.push('需要3D可视化和数字孪生能力');
             if (r.lowCost) r.customReqs.push('需要控制成本，优先选用性价比方案');
             if (r.highReliability) r.customReqs.push('需要高可靠性设计，冗余备份');
+            if (r.locations.length > 0) r.customReqs.push('项目部署地点：' + r.locations.join('、'));
+            if (r.timeRanges.length > 0) r.customReqs.push('时间要求：' + r.timeRanges.join('、'));
+            if (r.organizations.length > 0) r.customReqs.push('服务对象：' + r.organizations.join('、'));
             
             return r;
         }
@@ -1922,20 +1915,6 @@ ${userDesc && userDesc.hasVideo ? '视频数据独立处理：RTSP接入、AI分
         function showLoading() { document.getElementById('loadingOverlay').classList.add('active'); }
         function hideLoading() { document.getElementById('loadingOverlay').classList.remove('active'); }
         function showToast(text) { const t = document.getElementById('toast'); document.getElementById('toastText').textContent = text; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 3000); }
-
-        // 方案版本切换
-        function switchVersion(idx) {
-            currentVersion = idx;
-            document.querySelectorAll('.solution-version-tab').forEach((tab, i) => {
-                tab.classList.toggle('active', i === idx);
-            });
-            if (solutionVersions.length > 0) {
-                const group = solutionVersions[solutionVersions.length - 1];
-                const keys = ['simple', 'medium', 'complex'];
-                currentSolution = group[keys[idx]];
-                renderSolution(currentSolution);
-            }
-        }
 
         // 渲染方案
         function renderSolution(s) {
@@ -2117,12 +2096,7 @@ ${userDesc && userDesc.hasVideo ? '视频数据独立处理：RTSP接入、AI分
         }
         function renderCompare() {
             const panel = document.getElementById('comparePanel');
-            if (solutionVersions.length < 2) { panel.classList.remove('active'); return; }
-            panel.classList.add('active');
-            const g1 = solutionVersions[solutionVersions.length-2], g2 = solutionVersions[solutionVersions.length-1];
-            document.getElementById('compareGrid').innerHTML = `
-                <div class="compare-card"><h4>上一次生成（版本 ${solutionVersions.length-1}）</h4><div class="compare-item"><span class="key">场景</span><span class="val">${g1.medium.sceneName}</span></div><div class="compare-item"><span class="key">预算</span><span class="val">¥${g1.medium.budget}万</span></div><div class="compare-item"><span class="key">设备数</span><span class="val">${g1.medium.devices}台</span></div></div>
-                <div class="compare-card"><h4>本次生成（版本 ${solutionVersions.length}）</h4><div class="compare-item"><span class="key">场景</span><span class="val">${g2.medium.sceneName}</span></div><div class="compare-item"><span class="key">预算</span><span class="val">¥${g2.medium.budget}万</span></div><div class="compare-item"><span class="key">设备数</span><span class="val">${g2.medium.devices}台</span></div></div>`;
+            panel.classList.remove('active');
         }
 
         // ===== 新增渲染函数 =====
@@ -2213,7 +2187,7 @@ ${userDesc && userDesc.hasVideo ? '视频数据独立处理：RTSP接入、AI分
             return html;
         }
 
-        function toggleCompare() { const p = document.getElementById('comparePanel'); p.classList.toggle('active'); if (solutionVersions.length < 2) showToast('请生成多个版本'); }
+        function toggleCompare() { showToast('版本对比功能已简化，每次生成均输出完整版方案'); }
         function openEditModal() { document.getElementById('editBudget').value = document.getElementById('budget').value; document.getElementById('editDevices').value = document.getElementById('devices').value; document.getElementById('editModal').classList.add('active'); }
         function closeEditModal() { document.getElementById('editModal').classList.remove('active'); }
         function applyEdit() {
@@ -2272,9 +2246,9 @@ ${userDesc && userDesc.hasVideo ? '视频数据独立处理：RTSP接入、AI分
                 `<p><strong>平台层：</strong>${s.platform}</p>`,
                 `<p><strong>应用层：</strong>${(s.features||[]).join('、')}</p>`,
                 // Data Flow
-                s.dataFlow ? `<h2>六、数据流转架构</h2><p>${s.dataFlow.replace(/\n/g, '<br>')}</p>` : '',
+                s.dataFlow ? `<h2>五、数据流转架构</h2><p>${s.dataFlow.replace(/\n/g, '<br>')}</p>` : '',
                 // Implementation
-                s.implementationSteps ? `<h2>${s.implementationSteps.length > 3 ? '六' : '六'}、实施计划</h2>` + (s.implementationSteps||[]).map(p => `<h3>${p.phase}（${p.duration}）</h3><ul>${p.tasks.map(t => `<li>${t}</li>`).join('')}</ul>`).join('') : '',
+                s.implementationSteps ? `<h2>六、实施计划</h2>` + (s.implementationSteps||[]).map(p => `<h3>${p.phase}（${p.duration}）</h3><ul>${p.tasks.map(t => `<li>${t}</li>`).join('')}</ul>`).join('') : '',
                 // Platform Modules
                 s.platformModules ? `<h2>七、云平台功能模块</h2>` + (s.platformModules||[]).map(m => `<p><strong>${m.name}：</strong>${m.desc}</p>`).join('') : '',
                 // Risks
@@ -2284,8 +2258,33 @@ ${userDesc && userDesc.hasVideo ? '视频数据独立处理：RTSP接入、AI分
                 }).join('') : '',
                 // Optimization
                 s.optimizationTips ? `<h2>九、优化建议</h2><ul>` + (s.optimizationTips||[]).map(t => `<li>${t}</li>`).join('') + `</ul>` : '',
+                // ROI Analysis (复杂方案)
+                s.roiAnalysis ? `<h2>十、投资回报与行业趋势分析</h2>
+                    <table><tr><th>指标</th><th>数值</th><th>说明</th></tr>
+                    <tr><td>总投资额</td><td>¥${s.roiAnalysis.totalInvest.toLocaleString()}</td><td>项目初始投资</td></tr>
+                    <tr><td>年度成本节约</td><td>¥${s.roiAnalysis.annualSaving.toLocaleString()}</td><td>通过智能化运维降低的年度成本</td></tr>
+                    <tr><td>年度增收</td><td>¥${s.roiAnalysis.annualRevenueIncrease.toLocaleString()}</td><td>通过效率提升带来的年度增收</td></tr>
+                    <tr><td>年度综合收益</td><td>¥${s.roiAnalysis.annualBenefit.toLocaleString()}</td><td>成本节约+增收合计</td></tr>
+                    <tr><td>投资回收期</td><td>${s.roiAnalysis.paybackMonths}个月</td><td>预计回本周期</td></tr>
+                    <tr><td>三年ROI</td><td>${s.roiAnalysis.threeYearROI}%</td><td>三年累计投资回报率</td></tr>
+                    <tr><td>运维效率提升</td><td>${s.roiAnalysis.efficiency}</td><td>运维效率预期提升幅度</td></tr>
+                    <tr><td>维护成本降低</td><td>${s.roiAnalysis.maintenance}</td><td>设备维护成本下降比例</td></tr>
+                    <tr><td>停机时间减少</td><td>${s.roiAnalysis.downtime}</td><td>计划外停机时间缩减</td></tr>
+                    <tr><td>能耗降低</td><td>${s.roiAnalysis.energySaving}</td><td>通过智能调控节约的能耗</td></tr>
+                    </table>
+                    <h3>收益明细</h3>
+                    ${s.roiAnalysis.details ? s.roiAnalysis.details.map(d => `<p><strong>${d.item}：</strong>${d.value}——${d.desc}</p>`).join('') : ''}
+                    <h3>行业趋势分析</h3>
+                    <p>当前物联网行业正处于高速发展阶段，${s.sceneName.split('物联网')[0] || '物联网'}领域呈现以下趋势：</p>
+                    <ul>
+                    <li><strong>技术融合加速：</strong>AI+IoT（AIoT）深度融合，边缘计算与云计算协同，推动行业从数据采集向智能决策演进。</li>
+                    <li><strong>标准化进程：</strong>国家持续推进物联网标准体系建设，5G RedCap、星闪等新技术为行业应用提供更优选择。</li>
+                    <li><strong>市场规模增长：</strong>据行业报告，中国物联网市场规模预计2025年突破2万亿元，年复合增长率超过15%。</li>
+                    <li><strong>政策驱动：</strong>"十四五"规划明确提出加快数字化转型，各行业物联网改造获政策专项资金支持。</li>
+                    <li><strong>安全合规趋严：</strong>数据安全法、个人信息保护法等法规落地，物联网项目需同步规划安全合规体系。</li>
+                    </ul>` : '',
                 // Search Insights
-                s.searchContentSummary && s.searchContentSummary.length > 50 ? `<h2>十、行业参考数据</h2><p>本方案基于联网搜索的行业方案数据生成，参考设备包括：${(s.features||[]).slice(0,3).join('、')} 等。</p>` : '',
+                s.searchContentSummary && s.searchContentSummary.length > 50 ? `<h2>十一、联网搜索参考数据</h2><p>本方案基于联网搜索的行业方案数据生成，综合参考了以下行业信息：</p><p>${s.searchContentSummary.substring(0, 1500)}</p>` : '',
                 // Footer
                 `<div class="footer">— AI智能物联网方案生成器 v3.0 —<br>生成时间：${new Date().toLocaleString('zh-CN')}</div>`,
                 '</body></html>'
