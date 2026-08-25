@@ -1166,6 +1166,92 @@ const API = window.location.origin;
             result.risks = [...new Set(result.risks)].slice(0, 6);
             return result;
         }
+// ===== 场景差异化行业特征库 =====
+const sceneProfiles = {
+    'smart-industry': {
+        name: '智慧工业', icon: '🏭',
+        industryFocus: '制造业数字化转型与智能工厂建设',
+        keyChallenges: '设备异构接入、产线不停机改造、工业协议适配、实时性要求高',
+        techStack: '工业以太网+5G专网、边缘计算网关、OPC-UA/MQTT、数字孪生、MES集成',
+        industryStandards: 'IEC 62443工业安全标准、GB/T 30976工控安全、等保2.0三级',
+        typicalROI: '设备利用率提升15-25%，非计划停机减少40-60%，运维成本降低30-40%',
+        caseStudy: '某汽车零部件工厂部署500+传感器节点，通过振动监测实现预测性维护，年减少停机损失200万元，投资回收期14个月',
+        platformFeatures: ['设备全生命周期管理', 'OPC-UA协议转换', '产线数字孪生', '预测性维护', '能耗管理', 'MES/ERP集成'],
+        implementationFocus: '不停产改造、协议适配验证、工业网络安全加固',
+        dataFlowArch: 'PLC/传感器→工业网关(协议转换)→5G/工业以太网→边缘计算平台→云IoT平台→MES/ERP',
+        costStructure: '硬件设备45%、软件平台25%、施工集成15%、运维服务15%'
+    },
+    'smart-agriculture': {
+        name: '智慧农业', icon: '🌾',
+        industryFocus: '精准农业与现代农业数字化转型',
+        keyChallenges: '恶劣环境适应、广域通信覆盖、太阳能供电、农业季节性需求',
+        techStack: 'LoRaWAN广域覆盖、NB-IoT低功耗传输、太阳能供电、水肥一体化、无人机巡检',
+        industryStandards: 'NY/T 3723-2020智慧农业技术规范、农业物联网应用平台接口规范',
+        typicalROI: '灌溉用水节约30-50%，化肥农药减量20-30%，产量提升10-20%，人工成本降低40%',
+        caseStudy: '某智慧农业园区部署200+传感器覆盖500亩大棚，精准灌溉节水45%，产量提升18%，投资回收期10个月',
+        platformFeatures: ['环境监测', '精准灌溉控制', '作物生长模型', '病虫害预警', '水肥一体化', '产量预测'],
+        implementationFocus: '传感器防水防腐、太阳能供电系统、LoRa基站选址',
+        dataFlowArch: '土壤/气象传感器→LoRa网关→4G回传→农业IoT平台→灌溉/施肥控制系统→手机APP',
+        costStructure: '传感设备35%、通信网络25%、灌溉控制20%、软件平台20%'
+    },
+    'smart-home': {
+        name: '智能家居', icon: '🏠',
+        industryFocus: '全屋智能与智慧生活体验',
+        keyChallenges: '多协议融合、用户体验一致性、隐私保护、设备互联互通',
+        techStack: 'ZigBee 3.0+WiFi 6+蓝牙Mesh、Matter协议、本地中枢网关、语音助手',
+        industryStandards: 'Matter智能家居标准、GB 50314智能建筑设计标准',
+        typicalROI: '能耗降低20-30%，生活便利度提升60%，房产增值5-10%',
+        caseStudy: '某精装楼盘全屋智能交付，集成灯光/窗帘/安防/暖通/影音系统，单户成本1.5万元，用户满意度95%',
+        platformFeatures: ['场景自动化', '语音控制', '远程安防', '能耗管理', '健康管理', '家庭娱乐'],
+        implementationFocus: '全屋网络覆盖、多协议设备兼容、用户体验调优',
+        dataFlowArch: '传感器/执行器→ZigBee/蓝牙→中枢网关→WiFi云端→手机APP/语音助手',
+        costStructure: '智能设备50%、网络改造20%、安装调试20%、软件服务10%'
+    },
+    'security': {
+        name: '智能安防', icon: '🔒',
+        industryFocus: '立体化安防体系与AI智能分析',
+        keyChallenges: '视频数据安全、AI识别准确率、系统高可用、多系统联动',
+        techStack: 'AI高清摄像头+边缘分析、GB/T28181国标、视频结构化、人脸识别、周界防范',
+        industryStandards: 'GB 50348安全防范工程技术标准、GA/T 1400视图库标准',
+        typicalROI: '安保人力减少50-70%，事件响应时间缩短80%，安全事故率降低90%',
+        caseStudy: '某智慧园区安防项目部署200+AI摄像头+周界防范，实现零安全事故，年节省安保费用80万元，投资回收期8个月',
+        platformFeatures: ['AI视频分析', '人脸识别门禁', '周界防范', '消防联动', '应急指挥', '视频结构化'],
+        implementationFocus: '摄像头布点规划、AI模型训练调优、多系统联调',
+        dataFlowArch: '摄像头/传感器→安防汇聚网关→视频专网→AI分析平台→安防管理平台→指挥中心',
+        costStructure: '视频设备40%、AI分析平台25%、网络传输15%、施工集成20%'
+    },
+    'smart-city': {
+        name: '智慧城市', icon: '🏙️',
+        industryFocus: '城市级物联感知网络与数字治理',
+        keyChallenges: '十万级设备并发、多部门协调、数据孤岛打破、长期运维',
+        techStack: 'NB-IoT/5G城市专网、城市级IoT平台、数据中台、GIS可视化、数字孪生城市',
+        industryStandards: 'GB/T 36625智慧城市数据融合标准、CJ/T 188城市物联网通信协议',
+        typicalROI: '市政管理效率提升40%，能耗降低25%，市民满意度提升30%，应急响应时间缩短60%',
+        caseStudy: '某地级市智慧城市项目接入10万+传感器，覆盖路灯/管网/环境/交通，年节省运维费用3000万元，投资回收期3年',
+        platformFeatures: ['城市体征监测', '智慧照明', '管网监测', '环境监测', '应急调度', '数据中台'],
+        implementationFocus: '城市级网络规划、多部门系统对接、数据标准统一',
+        dataFlowArch: '城市传感器→NB-IoT/5G基站→城市IoT接入平台→城市数据中台→各委办局业务系统→城市运行大屏',
+        costStructure: '传感设备25%、通信网络30%、平台软件25%、施工集成20%'
+    },
+    'smart-logistics': {
+        name: '智慧物流', icon: '📦',
+        industryFocus: '物流全链路数字化与冷链监控',
+        keyChallenges: '移动环境通信、冷链断链风险、车辆/货物追踪、仓储自动化',
+        techStack: 'GPS/北斗双模定位、4G Cat.1传输、RFID仓储管理、冷链温控、电子围栏',
+        industryStandards: 'GB/T 28842冷链物流监控标准、JT/T 796道路运输车辆卫星定位标准',
+        typicalROI: '冷链断链率降低80%，物流效率提升30%，货损率降低50%，仓储效率提升40%',
+        caseStudy: '某冷链物流企业部署500+车载温控终端，实现全程温度可追溯，年减少货损200万元，投资回收期12个月',
+        platformFeatures: ['全程冷链监控', '车辆轨迹追踪', '仓储RFID管理', '电子围栏', '签收确认', '路径优化'],
+        implementationFocus: '车载设备供电、移动信号覆盖、冷链校准验证',
+        dataFlowArch: '车载GPS/温湿度传感器→4G通信→物流IoT平台→仓储管理系统→调度中心/客户APP',
+        costStructure: '车载设备30%、仓储RFID25%、通信网络20%、软件平台25%'
+    }
+};
+
+function getSceneProfile() {
+    return sceneProfiles[currentScene] || sceneProfiles['smart-industry'];
+}
+
 function generateHardware(sceneData, devices, budget, searchContentSummary, userDesc) {
             const kbInfo = extractKBInfo(kbFiles, currentScene);
             const bp = budget * 10000 / devices;
@@ -1304,29 +1390,40 @@ function generateHardware(sceneData, devices, budget, searchContentSummary, user
             ];
         }
         function calculateCost(hardware, budget, searchContentSummary) {
+            const sp = getSceneProfile();
             const hw = hardware.reduce((s, h) => s + h.price * h.qty, 0);
             const parsed = parseSearchData(searchContentSummary);
-            // 根据搜索数据中的价格信息调整成本
+            
+            // 根据场景定制成本结构
+            const costProfiles = {
+                'smart-industry': { inst: 0.18, plat: 0.14, net: 0.08, svc: 0.10, label: '工业方案成本结构' },
+                'smart-agriculture': { inst: 0.15, plat: 0.10, net: 0.12, svc: 0.10, label: '农业方案成本结构' },
+                'smart-home': { inst: 0.12, plat: 0.08, net: 0.10, svc: 0.08, label: '智能家居成本结构' },
+                'security': { inst: 0.20, plat: 0.12, net: 0.08, svc: 0.12, label: '安防方案成本结构' },
+                'smart-city': { inst: 0.15, plat: 0.15, net: 0.15, svc: 0.12, label: '智慧城市成本结构' },
+                'smart-logistics': { inst: 0.12, plat: 0.12, net: 0.10, svc: 0.10, label: '智慧物流成本结构' }
+            };
+            const cp = costProfiles[currentScene] || costProfiles['smart-industry'];
+
             let priceAdjustment = 1.0;
             if (parsed.prices.length > 0) {
-                // 简单参考：如果有明确价格信息，微调预算分配
                 priceAdjustment = 0.95 + Math.random() * 0.1;
             }
             const hwAdjusted = Math.round(hw * priceAdjustment);
-            const inst = Math.round(hwAdjusted * 0.15);
-            const plat = Math.round(budget*10000*0.12);
-            const net = Math.round(budget*10000*0.08);
-            const svc = Math.round(budget*10000*0.1);
+            const totalBudget = budget * 10000;
+            const inst = Math.round(totalBudget * cp.inst);
+            const plat = Math.round(totalBudget * cp.plat);
+            const net = Math.round(totalBudget * cp.net);
+            const svc = Math.round(totalBudget * cp.svc);
             const total = hwAdjusted + inst + plat + net + svc;
             return { items: [
-                { name:'硬件设备', detail:hardware.map(h=>h.model.split(' ')[0]).join(' + ') + '等', amount: hwAdjusted, percent: Math.round(hwAdjusted/total*100) },
-                { name:'安装调试', detail:'现场施工+设备调试+联调测试', amount: inst, percent: Math.round(inst/total*100) },
-                { name:'云平台服务', detail:'平台授权+数据存储+API调用', amount: plat, percent: Math.round(plat/total*100) },
-                { name:'网络通信', detail:'流量费+专线+网络运维', amount: net, percent: Math.round(net/total*100) },
-                { name:'运维服务', detail:'首年运维+技术支持+培训', amount: svc, percent: Math.round(svc/total*100) }
-            ], total };
-        }
-        function generateRisks(level, searchContentSummary, kbFiles, userDesc) {
+                { name: '硬件设备', detail: '传感器、网关、通信模组、供电模块等', amount: hwAdjusted, percent: Math.round(hwAdjusted/total*100) },
+                { name: '施工安装', detail: '设备安装、布线、调试', amount: inst, percent: Math.round(inst/total*100) },
+                { name: '软件平台', detail: 'IoT平台授权、数据库、中间件', amount: plat, percent: Math.round(plat/total*100) },
+                { name: '网络通信', detail: '通信网络建设、专线租赁', amount: net, percent: Math.round(net/total*100) },
+                { name: '运维服务', detail: '系统运维、技术支持、培训', amount: svc, percent: Math.round(svc/total*100) }
+            ], total, costProfile: cp.label, costStructure: sp.costStructure };
+        }        function generateRisks(level, searchContentSummary, kbFiles, userDesc) {
             const parsed = parseSearchData(searchContentSummary);
             const hasKB = kbFiles && kbFiles.length > 0;
             // 根据场景定制基础风险
@@ -1410,221 +1507,688 @@ function generateHardware(sceneData, devices, budget, searchContentSummary, user
         function generateImplementationSteps(sceneData, level, searchContentSummary, userDesc) {
             const parsed = parseSearchData(searchContentSummary);
             const kbInfo = extractKBInfo(kbFiles, currentScene);
+            const sp = getSceneProfile();
             const hasSearch = parsed.devices && parsed.devices.length > 0;
             const hasKB = kbInfo.sensors && kbInfo.sensors.length > 0;
             const searchRef = hasSearch ? '（参考行业方案：' + parsed.devices.slice(0,3).join('、') + '等）' : '';
+            const kbRef = hasKB ? '（参考《' + kbFiles[0].name + '》方案）' : '';
+
             if (level === 'simple') {
-                return [
-                    { phase: '第一阶段：需求调研与方案设计', duration: '1-2周', tasks: ['现场勘察与需求确认', '设备选型' + searchRef, '整体方案架构设计'] },
-                    { phase: '第二阶段：设备部署', duration: '2-3周', tasks: ['传感器安装与调试', '网关部署与网络接入', '通信联调与数据验证'] },
-                    { phase: '第三阶段：平台接入与测试验收', duration: '1-2周', tasks: ['设备注册与数据对接', '基础功能测试', '项目验收与上线'] },
-                    ...(userDesc && userDesc.hasVideo ? [{ step: '视频监控部署', desc: '安装摄像头、配置NVR/云存储、调试AI分析、联调告警。', duration: '3-5天' }] : []),
-                    ...(userDesc && userDesc.hasAI ? [{ step: 'AI模型训练', desc: '采集数据、训练模型、部署验证。', duration: '5-10天' }] : []),
-                    ...(userDesc && userDesc.hasGIS ? [{ step: 'GIS配置', desc: '导入地图、标注设备、配置围栏。', duration: '2-3天' }] : []),
-                    ...(userDesc && userDesc.hasDigitalTwin ? [{ step: '3D建模', desc: 'BIM建模、数据对接、虚实联动。', duration: '7-14天' }] : [])];
+                const sceneTasks = {
+                    'smart-industry': [
+                        { phase: '第一阶段：需求调研与方案设计', duration: '1-2周', tasks: ['产线现场勘察与工艺确认', '工业设备选型与POC验证' + searchRef, '工业通信方案架构设计'] },
+                        { phase: '第二阶段：设备部署', duration: '2-3周', tasks: ['传感器安装（不停产施工）', '工业网关部署与协议适配', '通信联调与数据验证'] },
+                        { phase: '第三阶段：平台接入与测试验收', duration: '1-2周', tasks: ['设备注册与数据对接', '基础监控功能测试', '项目验收与上线'] }
+                    ],
+                    'smart-agriculture': [
+                        { phase: '第一阶段：需求调研与方案设计', duration: '1-2周', tasks: ['农田/大棚现场勘察', '农业设备选型与布点规划' + searchRef, 'LoRa/NB-IoT通信方案设计'] },
+                        { phase: '第二阶段：设备部署', duration: '2-3周', tasks: ['传感器安装（防水防腐处理）', '太阳能供电系统部署', 'LoRa基站架设与信号调优'] },
+                        { phase: '第三阶段：平台接入与测试验收', duration: '1-2周', tasks: ['灌溉联动控制调试', '手机APP数据采集验证', '项目验收与上线'] }
+                    ],
+                    'smart-home': [
+                        { phase: '第一阶段：方案设计', duration: '3-5天', tasks: ['全屋需求沟通与场景定义', '智能设备选型' + searchRef, '全屋网络覆盖规划'] },
+                        { phase: '第二阶段：设备部署', duration: '3-5天', tasks: ['智能设备安装与组网', '中枢网关配置', '场景联动调试'] },
+                        { phase: '第三阶段：交付验收', duration: '1-2天', tasks: ['用户体验调优', '使用培训与操作演示', '项目交付'] }
+                    ],
+                    'security': [
+                        { phase: '第一阶段：方案设计', duration: '1-2周', tasks: ['安防区域勘察与布点规划', 'AI摄像头与传感器选型' + searchRef, '视频专网方案设计'] },
+                        { phase: '第二阶段：设备部署', duration: '2-3周', tasks: ['摄像头安装与角度调优', '门禁/周界设备部署', '视频流调试与AI模型加载'] },
+                        { phase: '第三阶段：联调验收', duration: '1周', tasks: ['多系统联动测试', '告警策略配置与验证', '项目验收'] }
+                    ],
+                    'smart-city': [
+                        { phase: '第一阶段：方案设计', duration: '2-3周', tasks: ['城市区域现场勘察', '市政设备选型与布点' + searchRef, 'NB-IoT覆盖评估'] },
+                        { phase: '第二阶段：设备部署', duration: '3-4周', tasks: ['传感器安装施工', '通信基站部署', '数据对接调试'] },
+                        { phase: '第三阶段：平台接入', duration: '1-2周', tasks: ['设备接入城市IoT平台', '数据可视化配置', '项目验收'] }
+                    ],
+                    'smart-logistics': [
+                        { phase: '第一阶段：方案设计', duration: '1-2周', tasks: ['物流路线与仓储勘察', '车载设备选型' + searchRef, '通信方案设计'] },
+                        { phase: '第二阶段：设备部署', duration: '2-3周', tasks: ['车载终端安装与调试', '仓储RFID部署', '数据对接测试'] },
+                        { phase: '第三阶段：上线验收', duration: '1周', tasks: ['全程冷链数据验证', '轨迹追踪测试', '项目交付'] }
+                    ]
+                };
+                const simpleSteps = sceneTasks[currentScene] || sceneTasks['smart-industry'];
+                return [...simpleSteps,
+                    ...(userDesc && userDesc.hasVideo ? [{ phase: '视频监控部署', duration: '3-5天', tasks: ['安装摄像头、配置NVR/云存储、调试AI分析、联调告警'] }] : []),
+                    ...(userDesc && userDesc.hasAI ? [{ phase: 'AI模型训练', duration: '5-10天', tasks: ['采集数据、训练模型、部署验证'] }] : []),
+                    ...(userDesc && userDesc.hasGIS ? [{ phase: 'GIS配置', duration: '2-3天', tasks: ['导入地图、标注设备、配置围栏'] }] : []),
+                    ...(userDesc && userDesc.hasDigitalTwin ? [{ phase: '3D建模', duration: '7-14天', tasks: ['BIM建模、数据对接、虚实联动'] }] : [])];
             } else if (level === 'medium') {
-                const searchTasks = hasSearch ? ['参考行业最佳实践进行设备选型对比', '验证搜索数据中的设备型号兼容性'] : [];
-                return [
-                    { phase: '第一阶段：需求调研与方案设计', duration: '2-3周', tasks: ['现场勘察与需求调研', '业务场景梳理与痛点分析', '网络环境评估与覆盖测试', '设备选型对比与POC验证', '整体方案架构设计评审', ...searchTasks] },
-                    { phase: '第二阶段：设备部署与网络建设', duration: '3-4周', tasks: ['传感器布点与安装施工', '网关设备部署与上电调试', '通信网络建设与信号优化', '边缘计算节点配置', '设备入网与协议对接'] },
-                    { phase: '第三阶段：平台接入与系统联调', duration: '2-3周', tasks: ['设备注册与接入平台', '数据采集规则配置', '业务逻辑与规则引擎开发', 'API接口对接与数据流转测试', '告警策略与联动规则配置'] },
-                    { phase: '第四阶段：业务上线与运维交接', duration: '1-2周', tasks: ['用户培训与操作手册交付', '试运行与问题修复', '运维体系建立与交接', '项目验收与文档归档'] },
-                    ...(userDesc && userDesc.hasVideo ? [{ step: '视频监控部署', desc: '安装摄像头、配置NVR/云存储、调试AI分析、联调告警。', duration: '3-5天' }] : []),
-                    ...(userDesc && userDesc.hasAI ? [{ step: 'AI模型训练', desc: '采集数据、训练模型、部署验证。', duration: '5-10天' }] : []),
-                    ...(userDesc && userDesc.hasGIS ? [{ step: 'GIS配置', desc: '导入地图、标注设备、配置围栏。', duration: '2-3天' }] : []),
-                    ...(userDesc && userDesc.hasDigitalTwin ? [{ step: '3D建模', desc: 'BIM建模、数据对接、虚实联动。', duration: '7-14天' }] : [])];
+                const sceneTasks2 = {
+                    'smart-industry': [
+                        { phase: '第一阶段：需求调研与方案设计', duration: '2-3周', tasks: ['产线工艺调研与设备评估', '网络环境评估与覆盖测试', '工业设备选型对比与POC验证', '不停产改造方案评审', ...(hasSearch ? ['参考行业最佳实践进行设备选型对比'] : [])] },
+                        { phase: '第二阶段：设备部署与网络建设', duration: '3-4周', tasks: ['传感器布点与安装（非生产时段施工）', '工业网关部署与Modbus/OPC-UA协议适配', '工业以太网/5G网络建设', '边缘计算节点配置', '设备入网与协议对接'] },
+                        { phase: '第三阶段：平台接入与系统联调', duration: '2-3周', tasks: ['设备接入IoT平台', 'PLC数据采集规则配置', '与MES/ERP系统API对接', '告警策略与联动规则配置', '全链路数据验证'] },
+                        { phase: '第四阶段：上线与运维交接', duration: '1-2周', tasks: ['运维人员培训', '试运行与问题修复', '运维体系建立', '项目验收与文档归档'] }
+                    ],
+                    'smart-agriculture': [
+                        { phase: '第一阶段：需求调研与方案设计', duration: '2-3周', tasks: ['农田/大棚环境评估与勘察', '作物种类与生长周期调研', '设备选型对比与布点规划', ...(hasSearch ? ['参考行业最佳实践'] : []), '灌溉/施肥联动方案设计'] },
+                        { phase: '第二阶段：设备部署与网络建设', duration: '3-4周', tasks: ['传感器安装（防水防腐处理）', 'LoRa基站架设（覆盖半径3km测试）', '太阳能供电系统部署', 'NB-IoT终端入网', '灌溉电磁阀/施肥机接线调试'] },
+                        { phase: '第三阶段：平台接入与系统联调', duration: '2-3周', tasks: ['农业IoT平台设备注册', '数据采集与可视化配置', '灌溉联动规则设置', '手机APP功能验证', '异常告警测试'] },
+                        { phase: '第四阶段：上线与运维交接', duration: '1-2周', tasks: ['农户操作培训', '试运行（至少一个生长周期）', '运维巡检计划制定', '项目验收'] }
+                    ],
+                    'smart-home': [
+                        { phase: '第一阶段：方案设计', duration: '1周', tasks: ['全屋需求沟通与场景定义', '设备选型与采购清单', '全屋网络覆盖规划', 'Matter/ZigBee兼容性评估'] },
+                        { phase: '第二阶段：设备部署', duration: '1-2周', tasks: ['全屋网络改造（WiFi 6覆盖）', '智能设备安装与组网', '中枢网关配置', '场景联动编排'] },
+                        { phase: '第三阶段：调试验收', duration: '3-5天', tasks: ['多场景联动测试', '语音助手集成', '用户体验调优', '使用培训与交付'] }
+                    ],
+                    'security': [
+                        { phase: '第一阶段：方案设计', duration: '1-2周', tasks: ['安防区域勘察与盲区评估', '设备选型与布点规划', '视频专网方案设计', ...(hasSearch ? ['参考行业安防方案'] : [])] },
+                        { phase: '第二阶段：设备部署', duration: '3-4周', tasks: ['AI摄像头安装与角度调优', '门禁/周界/消防设备部署', '视频专网与NVR部署', 'PoE供电与UPS配置'] },
+                        { phase: '第三阶段：系统联调', duration: '2-3周', tasks: ['AI视频分析平台接入', '多系统联动测试（门禁+监控+消防）', '告警策略配置', '应急演练'] },
+                        { phase: '第四阶段：验收交付', duration: '1周', tasks: ['操作人员培训', '试运行验证', '项目验收'] }
+                    ],
+                    'smart-city': [
+                        { phase: '第一阶段：方案设计', duration: '2-3周', tasks: ['城市区域现场勘察', '多委办局需求调研', '设备选型与布点规划', 'NB-IoT/5G覆盖评估', ...(hasSearch ? ['参考同类城市案例'] : [])] },
+                        { phase: '第二阶段：设备部署', duration: '4-6周', tasks: ['传感器规模化安装（非开挖施工）', 'NB-IoT基站部署与信号调优', '通信网络建设', '设备入网认证'] },
+                        { phase: '第三阶段：平台接入', duration: '3-4周', tasks: ['城市IoT平台设备接入', '数据中台对接', '各委办局系统API集成', '城市大屏可视化配置'] },
+                        { phase: '第四阶段：上线运维', duration: '2-3周', tasks: ['多部门联合试运行', '运维体系建立', '项目验收'] }
+                    ],
+                    'smart-logistics': [
+                        { phase: '第一阶段：方案设计', duration: '1-2周', tasks: ['物流路线与仓储环境勘察', '车载设备选型与测试', ...(hasSearch ? ['参考行业冷链方案'] : []), '通信方案规划'] },
+                        { phase: '第二阶段：设备部署', duration: '2-3周', tasks: ['车载GPS/温湿度终端安装', '仓储RFID读写器部署', '电子锁安装与联调', '4G网络信号测试'] },
+                        { phase: '第三阶段：平台接入', duration: '1-2周', tasks: ['物流IoT平台接入', '全程冷链数据验证', '轨迹追踪测试', '告警规则配置'] },
+                        { phase: '第四阶段：上线运营', duration: '1周', tasks: ['司机/仓管培训', '试运行验证', '项目交付'] }
+                    ]
+                };
+                const mediumSteps = sceneTasks2[currentScene] || sceneTasks2['smart-industry'];
+                return [...mediumSteps,
+                    ...(userDesc && userDesc.hasVideo ? [{ phase: '视频监控部署', duration: '3-5天', tasks: ['安装摄像头、配置NVR/云存储、调试AI分析、联调告警'] }] : []),
+                    ...(userDesc && userDesc.hasAI ? [{ phase: 'AI模型训练', duration: '5-10天', tasks: ['采集数据、训练模型、部署验证'] }] : []),
+                    ...(userDesc && userDesc.hasGIS ? [{ phase: 'GIS配置', duration: '2-3天', tasks: ['导入地图、标注设备、配置围栏'] }] : []),
+                    ...(userDesc && userDesc.hasDigitalTwin ? [{ phase: '3D建模', duration: '7-14天', tasks: ['BIM建模、数据对接、虚实联动'] }] : [])];
             } else {
-                const kbTasks = hasKB ? ['参考《' + (kbFiles[0]?.name || '知识库') + '》中的' + kbInfo.sensors.slice(0,3).join('、') + '等设备部署方案', '借鉴行业标准项目的实施经验和验收标准'] : [];
-                const searchTasks2 = hasSearch ? ['调研' + parsed.devices.join('、') + '等设备在实际项目中的应用案例', '对比行业标准方案进行设备选型'] : [];
-                const protocolRef = parsed.protocols.length > 0 ? '（优先采用' + parsed.protocols.slice(0,3).join('/') + '协议）' : '';
+                // Complex: use scene-specific focus areas
+                const sceneComplex = {
+                    'smart-industry': {
+                        focus: '工业级高可用架构，不停产改造，工业协议深度适配',
+                        phase1: ['产线工艺深度调研与利益相关方访谈', '现有PLC/SCADA系统架构评估', '工业网络环境全面勘测（延迟/带宽/可靠性）', '多厂商设备选型对比与POC验证（至少3家）', ...(hasSearch ? ['调研' + parsed.devices.join('、') + '等设备在实际项目中的应用案例'] : []), ...(hasKB ? ['参考《' + kbFiles[0].name + '》中的工业方案部署经验'] : []), '不停产改造方案设计与专家评审', '工业安全方案规划（IEC 62443标准）'],
+                        phase2: ['传感器规模化部署（分区域轮流施工，不影响生产）', '工业级边缘网关部署（冗余架构，主备切换<1s）', '工业以太网+5G专网双链路建设', 'OPC-UA/MQTT/Modbus多协议适配层开发', '边缘计算节点集群部署与负载均衡', '工业防火墙与网络安全隔离策略实施'],
+                        phase3: ['IoT平台部署与多租户架构配置', 'PLC数据采集与流处理管道搭建', '与MES/ERP/WMS系统API深度集成', '数字孪生建模与实时映射', 'AI预测性维护模型训练（历史数据≥6个月）', '统一身份认证与细粒度权限管理'],
+                        phase4: ['可视化大屏开发（产线数字孪生展示）', '全链路压测（模拟满负荷生产场景）', '安全渗透测试与漏洞修复', '用户UAT验收（产线操作人员参与）'],
+                        phase5: ['试点产线上线与数据采集', '灰度发布与A/B测试', '运维监控体系建立（Prometheus+Grafana）', 'SLA指标基线确立（设备在线率≥99.5%）'],
+                        phase6: ['规模化推广至全部产线', '运维自动化与智能巡检', '数据分析驱动工艺优化', 'ROI跟踪与价值报告']
+                    },
+                    'smart-agriculture': {
+                        focus: '广域覆盖+太阳能供电，精准农业闭环',
+                        phase1: ['农田/大棚环境全面评估（地形/土壤/水源/气象）', '作物生长周期与农业专家咨询', '设备选型对比与布点规划（考虑覆盖半径和通信盲区）', ...(hasSearch ? ['调研' + parsed.devices.join('、') + '等设备在实际农业项目中的应用'] : []), ...(hasKB ? ['参考《' + kbFiles[0].name + '》中的农业方案'] : []), '太阳能供电方案设计', '灌溉/施肥联动控制逻辑设计'],
+                        phase2: ['传感器规模化安装（防水防腐处理，IP67+）', 'LoRaWAN基站部署（覆盖半径3km验证测试）', '太阳能供电系统安装（10W光伏板+10000mAh电池）', 'NB-IoT终端入网与信号优化', '灌溉电磁阀/施肥机/水泵接线调试', '农业设备防雷与接地处理'],
+                        phase3: ['农业IoT平台部署与设备接入', '作物生长模型与传感器数据关联', '精准灌溉/施肥自动化规则配置', '病虫害预警模型训练', '手机APP/微信小程序开发', '气象站数据与灌溉策略联动'],
+                        phase4: ['无人机巡检系统集成', '全场景功能验证（灌溉/施肥/预警）', '农户操作培训', '安全合规验收（农药使用记录合规）'],
+                        phase5: ['试点大棚/农田上线（至少覆盖一个生长周期）', '数据收集与模型调优', '运维巡检体系建立'],
+                        phase6: ['规模化推广至全部农田', '产量数据分析与方案优化', '农业大数据平台建设', 'ROI跟踪']
+                    },
+                    'smart-home': {
+                        focus: '全屋智能体验，多协议融合，隐私保护',
+                        phase1: ['全屋需求深度沟通（家庭成员/生活习惯/安全需求）', '现有网络与电路评估', 'Matter/ZigBee/WiFi/蓝牙设备兼容性规划', ...(hasSearch ? ['参考行业全屋智能方案'] : []), ...(hasKB ? ['参考《' + kbFiles[0].name + '》中的智能家居方案'] : []), '全屋智能场景设计'],
+                        phase2: ['全屋WiFi 6网络改造（AP布点+Mesh组网）', '智能灯光/窗帘/暖通设备安装', '安防设备部署（门锁/摄像头/传感器）', '中枢网关配置（ZigBee 3.0+蓝牙Mesh）', '场景联动编排测试'],
+                        phase3: ['语音助手集成（小爱/天猫精灵/小度）', '手机APP配置与权限管理', '多场景联动调试（回家/离家/睡眠/影院模式）', '隐私保护设置（本地存储优先，云端数据加密）', '能耗监控与优化策略配置'],
+                        phase4: ['全屋功能联调测试', '家庭成员使用培训', '用户体验验收'],
+                        phase5: ['试运行（1-2周）', '场景微调与优化'],
+                        phase6: ['定期OTA升级', '设备扩展支持', '持续优化']
+                    },
+                    'security': {
+                        focus: 'AI+安防深度融合，多系统联动，高可用架构',
+                        phase1: ['安防区域全面勘察（盲区/重点/出入口）', '现有安防系统评估', 'AI摄像头/周界/门禁选型与布点规划', ...(hasSearch ? ['调研' + parsed.devices.join('、') + '等设备在实际安防项目中的应用'] : []), ...(hasKB ? ['参考《' + kbFiles[0].name + '》中的安防方案'] : []), '视频专网方案设计', 'AI分析场景定义'],
+                        phase2: ['AI高清摄像头安装（角度/焦距/夜视调优）', '周界防范设备部署（红外/振动光纤/雷达）', '门禁控制器安装与人员信息录入', '消防设备联动接入', '视频专网与NVR部署', 'PoE供电与UPS后备配置（断电续航≥4h）'],
+                        phase3: ['AI视频分析平台部署', '人脸识别/行为分析/入侵检测模型训练', '多系统联动测试（门禁+监控+消防+周界）', '告警策略配置与分级响应机制', '指挥中心大屏集成', 'GB/T28181国标对接（如需公安联网）'],
+                        phase4: ['全场景功能验证', '应急演练（入侵/火灾/突发事件）', '安全合规验收（等保2.0）'],
+                        phase5: ['试点区域上线', 'AI模型持续训练优化', '运维监控体系建立'],
+                        phase6: ['全区域推广', 'AI算法持续升级', '安防大数据分析']
+                    },
+                    'smart-city': {
+                        focus: '城市级十万设备并发，多部门数据融合',
+                        phase1: ['城市级现场勘察（多委办局联合）', '需求调研与利益相关方访谈', '现有市政系统评估与数据梳理', '设备选型与布点规划（路灯/管网/环境/交通）', ...(hasSearch ? ['调研同类智慧城市项目建设经验'] : []), ...(hasKB ? ['参考《' + kbFiles[0].name + '》中的智慧城市方案'] : []), '城市IoT平台架构设计', '数据中台与数据标准规划'],
+                        phase2: ['传感器规模化部署（非开挖施工技术）', 'NB-IoT/5G城市专网建设', '通信基站部署与信号调优', '边缘计算节点部署（区县级）', '设备入网认证与安全鉴权', '防雷/防水/防盗处理'],
+                        phase3: ['城市IoT平台部署（百万级设备并发架构）', '城市数据中台建设（多源数据融合）', '各委办局业务系统API集成', 'GIS地图与城市体征大屏开发', '事件工单与应急调度系统', '数据治理与标准制定'],
+                        phase4: ['全场景功能联调', '多部门联合演练', '安全合规验收（等保2.0三级）'],
+                        phase5: ['试点区域上线（1-2个街道）', '数据收集与平台调优', '运维体系建立'],
+                        phase6: ['全城推广', '城市数字孪生建设', '数据驱动城市治理']
+                    },
+                    'smart-logistics': {
+                        focus: '全程冷链可追溯，移动环境稳定通信',
+                        phase1: ['物流路线与仓储环境全面勘察', '冷链温度敏感度评估', '车载设备选型与通信方案规划', ...(hasSearch ? ['调研' + parsed.devices.join('、') + '等设备在实际物流项目中的应用'] : []), ...(hasKB ? ['参考《' + kbFiles[0].name + '》中的物流方案'] : []), 'RFID仓储管理方案设计', '电子围栏与路径规划'],
+                        phase2: ['车载GPS/温湿度终端安装（防震/防水/宽温设计）', '仓储RFID读写器部署（入库/出库/分拣节点）', '电子锁安装与联调测试', '4G Cat.1通信模块信号优化', '冷链温度传感器校准（±0.5℃精度验证）'],
+                        phase3: ['物流IoT平台部署', '全程冷链数据接入与实时监控', '车辆轨迹追踪与电子围栏', '仓储RFID数据与WMS系统对接', '异常告警与应急响应机制', '客户APP/小程序开发'],
+                        phase4: ['全链路功能验证（模拟运输全流程）', '冷链断链应急演练', '操作人员培训'],
+                        phase5: ['试点线路上线', '数据收集与路线优化', '运维体系建立'],
+                        phase6: ['全线路推广', 'AI路径优化', '大数据分析驱动']
+                    }
+                };
+                const c = sceneComplex[currentScene] || sceneComplex['smart-industry'];
+                const protocolRef = parsed.protocols.length > 0 ? '（优先采用' + parsed.protocols.slice(0,3).join('/') + '协议，' + sp.industryStandards + '）' : '（遵循' + sp.industryStandards + '）';
                 return [
-                    { phase: '第一阶段：深度需求调研与可行性分析', duration: '2-4周', tasks: ['业务场景深度调研与利益相关方访谈', '现有系统架构评估与技术债务梳理', '网络环境与通信覆盖全面勘测', '多厂商设备选型对比与POC验证', ...searchTasks2, ...kbTasks, '技术可行性分析与风险评估报告', '整体方案架构设计与专家评审'] },
-                    { phase: '第二阶段：基础设施部署与网络建设', duration: '4-6周', tasks: ['传感器规模化布点与安装施工', '工业级边缘网关部署与高可用配置', '通信网络建设与信号调优' + protocolRef, '边缘计算节点集群部署与负载均衡', '设备入网认证与协议适配层开发', '网络安全策略实施（防火墙/VLAN/ACL）'] },
-                    { phase: '第三阶段：平台架构搭建与系统集成', duration: '3-5周', tasks: ['IoT平台部署与多租户架构配置', '设备全生命周期管理模块上线', '数据采集管道搭建与流处理引擎部署', '规则引擎与自动化工作流开发', 'AI/ML分析模型训练与部署', '第三方系统（ERP/MES/CRM）API集成', '统一身份认证与权限管理体系建立'] },
-                    { phase: '第四阶段：业务应用开发与联调测试', duration: '3-4周', tasks: ['可视化大屏与多端应用开发', '数字孪生建模与实时映射', '业务流程自动化编排与测试', '全链路压测与性能调优', '安全渗透测试与漏洞修复', '用户UAT验收测试'] },
-                    { phase: '第五阶段：试点上线与灰度发布', duration: '2-3周', tasks: ['试点区域设备上线与数据采集', '灰度发布与A/B测试', '运维监控体系建立（Prometheus+Grafana）', 'SLA指标基线确立', '应急预案演练与灾备测试'] },
-                    { phase: '第六阶段：全面推广与持续优化', duration: '持续', tasks: ['规模化复制推广至全部区域', '运维自动化与智能巡检', '数据分析驱动持续优化', '技术债管理与定期升级', 'ROI跟踪与价值报告输出'] }
+                    { phase: '第一阶段：深度需求调研与可行性分析', duration: '2-4周', tasks: c.phase1 },
+                    { phase: '第二阶段：基础设施部署与网络建设', duration: '4-6周', tasks: c.phase2 },
+                    { phase: '第三阶段：平台架构搭建与系统集成', duration: '3-5周', tasks: c.phase3 },
+                    { phase: '第四阶段：业务应用开发与联调测试', duration: '3-4周', tasks: c.phase4 },
+                    { phase: '第五阶段：试点上线与灰度发布', duration: '2-3周', tasks: c.phase5 },
+                    { phase: '第六阶段：全面推广与持续优化', duration: '持续', tasks: c.phase6 }
                 ];
             }
         }
         function generateDataFlow(sceneData, level, searchContentSummary, userDesc) {
             const parsed = parseSearchData(searchContentSummary);
             const kbInfo = extractKBInfo(kbFiles, currentScene);
+            const sp = getSceneProfile();
             const hasSearch = parsed.devices && parsed.devices.length > 0;
             const hasKB = kbInfo.sensors && kbInfo.sensors.length > 0;
             const deviceRef = hasSearch ? '（行业常用设备：' + parsed.devices.slice(0,3).join('、') + '）' : '';
             const protocolRef = parsed.protocols.length > 0 ? parsed.protocols.join(' / ') : (sceneData.protocols||['Modbus','MQTT']).join(' / ');
+            const arch = sp.dataFlowArch;
+
             if (level === 'simple') {
-                return `1. 数据采集：${sceneData.sensors[0]}等设备实时采集环境数据${deviceRef}，采样周期5-10分钟。
+                const simpleFlows = {
+                    'smart-industry': `1. 数据采集：${sceneData.sensors[0]}等设备实时采集产线环境数据${deviceRef}，采样周期5-10分钟，支持4-20mA模拟量和RS485数字信号接入。
 
-2. 边缘传输：数据通过${protocolRef}协议传输至${sceneData.gateway}，网关进行协议转换与本地缓存。
+2. 边缘传输：数据通过Modbus/OPC-UA协议传输至${sceneData.gateway}，网关完成工业协议到MQTT的转换，本地缓存防止数据丢失。
 
-3. 云端处理：经${document.getElementById('communication').value === 'auto' ? '智能推荐的通信方式' : document.getElementById('communication').value}加密上传至${sceneData.platform}，平台完成数据存储与可视化展示。`;
+3. 云端处理：经加密上传至${sceneData.platform}，平台完成数据存储、实时监控与异常告警，支持PC端和手机端查看。`,
+                    'smart-agriculture': `1. 数据采集：${sceneData.sensors[0]}等设备实时采集土壤/气象数据${deviceRef}，太阳能供电保障长期运行，采样周期5-30分钟。
+
+2. LoRa传输：数据通过LoRa无线传输至农业LoRaWAN网关（覆盖半径3km），网关完成协议转换后通过4G回传。
+
+3. 云端处理：数据上传至${sceneData.platform}，实现环境监测可视化、精准灌溉自动控制、手机APP远程管理。`,
+                    'smart-home': `1. 数据采集：${sceneData.sensors[0]}等设备采集环境数据${deviceRef}，ZigBee/蓝牙低功耗连接，电池供电续航1-2年。
+
+2. 网关传输：数据通过ZigBee 3.0传输至智能家庭中枢网关，网关支持Matter协议实现跨品牌设备互联。
+
+3. 云端处理：数据上传至云平台，实现场景自动化控制、远程监控、语音助手联动，支持手机APP随时查看和控制。`,
+                    'security': `1. 数据采集：${sceneData.sensors[0]}等设备采集安防数据${deviceRef}，支持7×24小时不间断运行，视频流H.265编码。
+
+2. 专网传输：数据通过视频专网传输至安防汇聚网关，GB/T28181协议确保视频流稳定传输，支持云台控制。
+
+3. 云端处理：数据上传至AI分析平台，实现智能视频分析、人脸识别、入侵检测、告警联动，支持指挥中心大屏展示。`,
+                    'smart-city': `1. 数据采集：${sceneData.sensors[0]}等设备采集城市感知数据${deviceRef}，NB-IoT低功耗传输，电池供电续航3-5年。
+
+2. 城市专网传输：数据通过NB-IoT基站接入城市级物联网平台，支持十万级设备并发接入。
+
+3. 云端处理：数据上传至城市数据中台，实现多维度数据融合分析、城市体征监测、应急调度指挥。`,
+                    'smart-logistics': `1. 数据采集：${sceneData.sensors[0]}等设备采集物流数据${deviceRef}，车载供电+备用电池，采样周期1-5分钟。
+
+2. 4G传输：数据通过4G Cat.1实时传输至物流边缘网关，支持断网本地缓存和网络恢复自动补传。
+
+3. 云端处理：数据上传至物流链管理平台，实现全程冷链监控、车辆轨迹追踪、电子围栏告警、客户APP实时查看。`
+                };
+                return simpleFlows[currentScene] || simpleFlows['smart-industry'];
             } else if (level === 'medium') {
                 return `1. 感知层数据采集：${sceneData.sensors.slice(0,3).join('、')}等设备${deviceRef}按设定周期（5-30秒/次）实时采集环境参数，支持本地数据缓存与断点续传，采集数据精度达99.5%以上。
 
-2. 边缘层协议转换：${sceneData.gateway}负责多协议接入（${protocolRef}），实现工业协议到MQTT的转换，在边缘侧完成数据过滤、聚合与异常值剔除，减少60%以上的无效数据传输。
+2. 边缘层协议转换：${sceneData.gateway}负责多协议接入（${protocolRef}），实现行业协议到标准MQTT的转换，在边缘侧完成数据过滤、聚合与异常值剔除，减少60%以上的无效数据传输。
 
 3. 网络层安全传输：采用TLS 1.2/1.3加密通道，支持QoS分级保障（关键数据QoS=2确保至少一次送达），集成设备双向认证与Token鉴权，保障数据传输的机密性与完整性。
 
-4. 平台层智能处理：${sceneData.platform}提供设备接入管理、时序数据存储、实时流处理与规则引擎四大核心能力，支持百万级设备并发接入，数据处理延迟<200ms，内置异常检测与趋势预测算法。
+4. 平台层智能处理：${sceneData.platform}提供设备接入管理、时序数据存储、实时流处理与规则引擎四大核心能力，支持十万级设备并发接入，数据处理延迟<200ms，内置异常检测与趋势预测算法。
 
 5. 应用层业务闭环：通过可视化大屏、移动端APP和API接口，实现"感知-分析-决策-执行"的完整闭环，支持告警自动触发、设备远程控制、报表自动生成等业务场景，指令下发延迟<1秒。
-${userDesc && userDesc.hasVideo ? '视频数据独立处理：RTSP接入、AI分析、结构化推送。' : ''}${userDesc && userDesc.hasGIS ? 'GIS实时渲染设备位置和状态。' : ''}`;
+${userDesc && userDesc.hasVideo ? '视频数据独立处理：RTSP接入、AI分析、结构化推送。' : ''}${userDesc && userDesc.hasGIS ? 'GIS实时渲染设备位置和状态。' : ''}
+
+📐 数据流架构：${arch}`;
             } else {
                 return `1. 感知层多维数据采集：部署${sceneData.sensors.join('、')}等全系列传感器${deviceRef}，采样频率可配置（100ms~60s），支持模拟量/数字量/脉冲量多种信号类型，内置自校准与自诊断功能，数据精度达99.9%。传感器支持本地边缘存储，断网情况下可持续缓存7天数据，网络恢复后自动补传。
 
-2. 边缘层智能处理与协议适配：${sceneData.gateway}搭载ARM Cortex-A72处理器+4GB内存，运行轻量级容器化边缘计算框架，支持${protocolRef}等主流工业/物联网协议接入，在边缘侧实现数据清洗、特征提取、异常检测和本地决策（规则引擎延迟<10ms）。支持边缘-云端协同推理，AI模型可远程下发至边缘节点执行。
+2. 边缘层智能处理与协议适配：${sceneData.gateway}搭载高性能处理器+大内存，运行容器化边缘计算框架，支持${protocolRef}等行业协议接入，在边缘侧实现数据清洗、特征提取、异常检测和本地决策（规则引擎延迟<10ms）。支持边缘-云端协同推理，AI模型可远程下发至边缘节点执行。
 
-3. 网络层多链路融合与安全传输：构建"5G主用+NB-IoT备用"的双链路架构，5G链路保障大带宽低延迟数据传输（eMBB场景下行>1Gbps，uRLLC场景延迟<10ms），NB-IoT链路作为低功耗备用通道。全链路采用TLS 1.3加密+国密SM2/SM3/SM4算法，实现端到端安全传输；支持网络切片技术，保障关键业务SLA≥99.99%。
+3. 网络层多链路融合与安全传输：构建主备双链路架构，保障关键业务数据传输可靠性。全链路采用TLS 1.3加密，实现端到端安全传输；支持设备双向认证和数据完整性校验，符合${sp.industryStandards}安全标准。
 
-4. 云端数据层：采用时序数据库（InfluxDB/TDengine）存储高频传感器数据，关系型数据库（PostgreSQL/MySQL）存储设备档案和业务数据，对象存储（OSS/COS）存储图片/视频/文档等非结构化数据，支持PB级数据管理、冷热数据自动分层和毫秒级时间序列查询。
+4. 云端数据层：采用时序数据库存储高频传感器数据，关系型数据库存储设备档案和业务数据，对象存储存储图片/视频/文档等非结构化数据，支持PB级数据管理、冷热数据自动分层和毫秒级时间序列查询。
 
 5. 平台服务层：${sceneData.platform}提供设备全生命周期管理、实时数据采集与流处理、可视化规则引擎编排、AI智能分析与预测、多端可视化展示、开放API生态六大核心服务模块，单集群支持百万级设备并发接入和水平弹性扩展，SLA≥99.95%。
 
-6. 应用控制层：基于数字孪生技术构建物理设备的虚拟映射模型，实现设备状态实时仿真、故障预测预警（提前7-30天）、控制策略AI优化；支持APP/Web/微信小程序/PC客户端/大屏多端展示，指令下发延迟<500ms，控制成功率≥99.99%，形成"感知-分析-决策-执行"的完整智能闭环。`;
+6. 应用控制层：构建"感知-分析-决策-执行"的完整智能闭环，实现设备状态实时仿真、故障预测预警、控制策略AI优化；支持APP/Web/微信小程序/PC客户端/大屏多端展示，指令下发延迟<500ms，控制成功率≥99.99%。
+
+📐 数据流架构：${arch}
+📋 行业标准：${sp.industryStandards}`;
             }
-        
-        
         }
         function generatePlatformModules(sceneData, level, searchContentSummary, userDesc) {
             const parsed = parseSearchData(searchContentSummary);
             const kbInfo = extractKBInfo(kbFiles, currentScene);
+            const sp = getSceneProfile();
             const hasSearch = parsed.devices && parsed.devices.length > 0;
             const hasKB = kbInfo.features && kbInfo.features.length > 0;
             const platformRef = parsed.platforms.length > 0 ? '（参考行业方案：' + parsed.platforms.slice(0,2).join('、') + '）' : '';
             const scene = currentScene;
-            const simpleModules = {
-                'smart-industry': [
-                    { name: '设备管理', desc: '工业设备注册、在线状态监控、远程参数配置、OTA固件升级' },
-                    { name: '数据采集', desc: '实时采集PLC/传感器数据，支持Modbus/OPC-UA协议，数据存储周期可配置' },
-                    { name: '告警管理', desc: '设备异常阈值告警、短信/邮件通知、告警分级与升级机制' }
-                ],
-                'smart-agriculture': [
-                    { name: '设备管理', desc: '传感器/网关注册、在线状态监控、远程参数配置' },
-                    { name: '环境监测', desc: '土壤温湿度、光照、气象等数据实时采集与可视化' },
-                    { name: '告警通知', desc: '异常阈值告警、短信通知、灌溉联动控制' }
-                ],
-                'smart-home': [
-                    { name: '设备管理', desc: '智能设备注册、在线状态监控、场景联动配置' },
-                    { name: '场景控制', desc: '回家/离家/睡眠等场景一键切换，定时任务管理' },
-                    { name: '告警通知', desc: '安防告警、设备异常通知、手机推送' }
-                ],
-                'security': [
-                    { name: '设备管理', desc: '摄像头/门禁/传感器注册、在线状态监控' },
-                    { name: '视频预览', desc: '实时监控画面查看、录像回放、云台控制' },
-                    { name: '告警管理', desc: '移动侦测/入侵告警、联动录像、短信通知' }
-                ],
-                'smart-city': [
-                    { name: '设备管理', desc: '城市物联网设备注册、状态监控、批量配置' },
-                    { name: '数据监测', desc: '环境/管网/路灯等多维数据实时采集与展示' },
-                    { name: '告警调度', desc: '异常告警、工单派发、处置跟踪' }
-                ],
-                'smart-logistics': [
-                    { name: '设备管理', desc: 'GPS/温湿度/电子锁等设备注册与状态监控' },
-                    { name: '轨迹追踪', desc: '车辆/货物实时位置查看、历史轨迹回放' },
-                    { name: '告警通知', desc: '温度越限/电子锁异常/偏航告警、短信通知' }
-                ]
-            };
+
             if (level === 'simple') {
-                return simpleModules[scene] || [
-                    { name: '设备管理', desc: '设备注册、在线状态监控、远程查看' },
-                    { name: '数据展示', desc: '实时数据查看、基础历史记录查询' },
-                    { name: '告警通知', desc: '阈值告警、短信通知' }
-                ];
+                const simpleModules = {
+                    'smart-industry': [
+                        { name: '设备管理', desc: '工业设备注册、在线状态监控、远程参数配置、OTA固件升级' },
+                        { name: '数据采集', desc: '实时采集PLC/传感器数据，支持Modbus/OPC-UA协议，数据存储周期可配置' },
+                        { name: '告警管理', desc: '设备异常阈值告警、短信/邮件通知、告警分级与升级机制' }
+                    ],
+                    'smart-agriculture': [
+                        { name: '设备管理', desc: '传感器/网关注册、在线状态监控、远程参数配置' },
+                        { name: '环境监测', desc: '土壤温湿度、光照、气象等数据实时采集与可视化' },
+                        { name: '告警通知', desc: '异常阈值告警、短信通知、灌溉联动控制' }
+                    ],
+                    'smart-home': [
+                        { name: '设备管理', desc: '智能设备注册、在线状态监控、场景联动配置' },
+                        { name: '场景控制', desc: '回家/离家/睡眠等场景一键切换，定时任务管理' },
+                        { name: '告警通知', desc: '安防告警、设备异常通知、手机推送' }
+                    ],
+                    'security': [
+                        { name: '设备管理', desc: '摄像头/门禁/传感器注册、在线状态监控' },
+                        { name: '视频预览', desc: '实时监控画面查看、录像回放、云台控制' },
+                        { name: '告警管理', desc: '移动侦测/入侵告警、联动录像、短信通知' }
+                    ],
+                    'smart-city': [
+                        { name: '设备管理', desc: '城市物联网设备注册、状态监控、批量配置' },
+                        { name: '数据监测', desc: '环境/管网/路灯等多维数据实时采集与展示' },
+                        { name: '告警调度', desc: '异常告警、工单派发、处置跟踪' }
+                    ],
+                    'smart-logistics': [
+                        { name: '设备管理', desc: 'GPS/温湿度/电子锁等设备注册与状态监控' },
+                        { name: '轨迹追踪', desc: '车辆/货物实时位置查看、历史轨迹回放' },
+                        { name: '告警通知', desc: '温度越限/电子锁异常/偏航告警、短信通知' }
+                    ]
+                };
+                return simpleModules[scene] || simpleModules['smart-industry'];
             } else if (level === 'medium') {
-                return [
-                    { name: '设备接入与管理', desc: '支持MQTT/CoAP/HTTP多协议接入，提供设备注册、认证鉴权、OTA远程升级、在线状态监控、批量配置下发、设备分组管理和标签管理。' + platformRef },
-                    { name: '数据采集与存储', desc: '内置时序数据处理引擎，支持原始数据和聚合数据分层存储，数据保留策略灵活可配置，支持TB级数据管理、自动数据压缩和毫秒级时间序列查询。' },
-                    { name: '规则引擎与自动化', desc: '提供可视化规则编排界面，支持阈值告警、复合条件触发、设备联动、定时任务、Webhook回调、消息队列推送等10+触发类型，规则执行引擎延迟<100ms，支持规则导入导出和版本管理。' },
-                    { name: '数据分析与AI', desc: '集成机器学习平台，提供异常检测、趋势预测、聚类分析、关联挖掘等算法模型，支持自定义模型训练和在线部署，实现预测性维护和智能诊断。' },
-                    { name: '可视化与大屏', desc: '内置拖拽式大屏设计器，支持GIS地图、3D模型、实时曲线、数据表格、告警列表等20+组件，支持Web/APP/微信小程序多端适配，支持自定义主题和权限分级控制。' },
-                    { name: '安全管理', desc: '提供设备证书认证、RBAC访问控制模型、操作审计日志、数据传输加密、定期安全扫描和漏洞管理，满足基础合规要求。' },
-                
+                const sceneModules = {
+                    'smart-industry': [
+                        { name: '设备接入与管理', desc: '支持MQTT/Modbus/OPC-UA多协议接入，提供设备注册、认证鉴权、OTA远程升级、在线状态监控、批量配置下发、设备分组管理和标签管理。支持工业设备影子，断网恢复后自动同步状态。' + platformRef },
+                        { name: '产线数据采集', desc: '内置时序数据处理引擎，支持PLC原始数据和聚合数据分层存储，采样周期可配置（100ms~60s），支持TB级数据管理和毫秒级时间序列查询，自动数据压缩和冷热分层。' },
+                        { name: '预测性维护', desc: '基于振动/温度/电流等传感器数据，构建设备健康评分模型，实现故障提前7-30天预警，减少非计划停机40%以上。支持设备维修工单自动派发和维修记录追溯。' },
+                        { name: '能耗管理', desc: '实时监测产线能耗数据，支持分设备/分产线/分时段能耗统计分析，自动生成能耗报表和优化建议，帮助企业降低能耗成本15-20%。' },
+                        { name: '可视化大屏', desc: '内置拖拽式大屏设计器，支持产线数字孪生、实时数据曲线、设备状态矩阵、告警列表等组件，支持Web/APP多端适配，支持权限分级控制。' },
+                        { name: '安全管理', desc: '提供设备证书认证、RBAC访问控制、操作审计日志、数据传输加密，符合IEC 62443工业安全标准要求。' }
+                    ],
+                    'smart-agriculture': [
+                        { name: '设备接入与管理', desc: '支持LoRaWAN/NB-IoT/MQTT多协议接入，提供传感器注册、在线状态监控、远程参数配置、OTA固件升级，支持设备分组（按地块/大棚）和标签管理。' + platformRef },
+                        { name: '环境监测中心', desc: '实时采集并展示土壤温湿度、光照强度、CO₂浓度、气象数据等，支持历史数据查询、趋势分析和数据导出，生成作物生长环境监测报告。' },
+                        { name: '精准灌溉控制', desc: '基于土壤墒情数据和作物需水模型，自动触发灌溉控制策略，支持定时/定量/按需灌溉，实现节水30-50%。支持手动远程控制和自动模式切换。' },
+                        { name: '病虫害预警', desc: '结合气象数据和历史病虫害记录，构建病虫害发生概率预测模型，提前3-7天发布预警信息，指导农户科学防治，减少农药使用20-30%。' },
+                        { name: '手机APP管理', desc: '提供农户专属APP，支持实时查看传感器数据、远程控制灌溉设备、接收告警通知、查看作物生长报告，支持多地块切换管理。' },
+                        { name: '水肥一体化', desc: '根据土壤养分数据和作物生长阶段，智能推荐施肥方案，自动控制水肥比例和灌溉量，实现精准施肥，提高肥料利用率30%以上。' }
+                    ],
+                    'smart-home': [
+                        { name: '设备管理', desc: '支持ZigBee/WiFi/蓝牙Mesh多协议设备接入，提供设备注册、在线状态监控、固件升级、场景联动配置，支持Matter标准跨品牌兼容。' + platformRef },
+                        { name: '场景自动化', desc: '内置丰富场景模板（回家/离家/睡眠/影院/起床），支持自定义场景编排，支持定时任务、条件触发、设备联动，场景切换延迟<1秒。' },
+                        { name: '语音控制', desc: '集成主流语音助手（小爱同学/天猫精灵/小度），支持语音控制全屋设备，支持自定义语音指令和设备组合控制。' },
+                        { name: '安防监控', desc: '支持门窗磁、人体红外、摄像头等安防设备联动，异常告警实时推送手机APP，支持告警录像自动保存和回放。' },
+                        { name: '能耗管理', desc: '实时监测全屋用电/用水/用气数据，支持分设备能耗统计和异常用电告警，提供节能建议，帮助家庭降低能耗20-30%。' },
+                        { name: '隐私保护', desc: '本地数据优先存储，云端数据加密传输，支持数据查看权限分级，支持隐私模式一键关闭所有摄像头和传感器。' }
+                    ],
+                    'security': [
+                        { name: '设备接入与管理', desc: '支持摄像头/门禁/传感器等多类设备接入，提供设备注册、在线状态监控、远程配置、固件升级，支持GB/T28181国标协议对接。' + platformRef },
+                        { name: 'AI视频分析', desc: '集成AI视频分析引擎，支持人脸识别、行为分析、移动侦测、入侵检测、人数统计等智能分析功能，支持云端和本地边缘AI推理。' },
+                        { name: '门禁管理', desc: '支持人脸识别、IC卡、指纹、密码等多种开门方式，支持人员权限分级管理、通行记录查询、异常通行告警，支持访客临时授权。' },
+                        { name: '周界防范', desc: '支持红外对射、振动光纤、电子围栏等多种周界防范设备接入，实现入侵实时告警、联动视频监控、自动推送安保人员。' },
+                        { name: '告警指挥中心', desc: '统一告警管理平台，支持多类型告警分级分类、告警工单自动派发、处置流程跟踪、告警统计分析，支持大屏可视化展示。' },
+                        { name: '消防联动', desc: '支持烟感/温感/消防主机等设备接入，火灾告警自动触发视频联动、门禁开启、广播疏散，符合消防规范要求。' }
+                    ],
+                    'smart-city': [
+                        { name: '设备接入与管理', desc: '支持NB-IoT/5G/LoRa海量设备接入，提供设备注册、状态监控、批量配置、远程升级，支持十万级设备并发管理和分区域分组管理。' + platformRef },
+                        { name: '城市体征监测', desc: '汇聚环境/管网/路灯/交通等多维城市感知数据，构建城市运行指标体系，实时展示城市运行状态，支持历史趋势分析和异常预警。' },
+                        { name: '事件工单管理', desc: '自动感知城市异常事件，智能派单至对应委办局，支持工单处理流程跟踪、超时预警、处理结果反馈，形成闭环管理。' },
+                        { name: '应急调度指挥', desc: '突发事件自动告警并触发应急预案，支持视频联动、资源调度、人员指挥、信息发布，提高城市应急响应效率60%以上。' },
+                        { name: '数据中台', desc: '构建城市级数据中台，实现多部门数据融合治理、数据标准统一、数据共享交换，为各委办局业务系统提供统一数据服务。' },
+                        { name: '城市运行大屏', desc: '城市运行全景可视化大屏，汇聚各维度城市运行指标，支持GIS地图展示、实时数据刷新、多维度分析钻取，为城市管理者提供决策支撑。' }
+                    ],
+                    'smart-logistics': [
+                        { name: '设备接入与管理', desc: '支持GPS/温湿度/RFID/电子锁等多类物流设备接入，提供设备注册、状态监控、远程配置、固件升级，支持车辆/货物/仓储设备分类管理。' + platformRef },
+                        { name: '全程冷链监控', desc: '实时监测冷链运输温度/湿度数据，支持温度曲线查看、越限告警、断链预警、温度报告自动生成，确保冷链全程可追溯。' },
+                        { name: '车辆轨迹追踪', desc: '实时查看车辆位置和行驶轨迹，支持历史轨迹回放、行驶里程统计、停留点分析、偏航告警、电子围栏管理。' },
+                        { name: '仓储RFID管理', desc: '支持RFID读写器接入，实现货物入库/出库/盘点自动化管理，支持货物溯源、库存实时统计、盘点差异分析。' },
+                        { name: '告警通知中心', desc: '温度越限、偏航、电子锁异常、设备离线等告警实时推送，支持短信/APP/邮件多渠道通知，支持告警分级和处置流程。' },
+                        { name: '客户APP', desc: '为客户提供货物实时追踪、温度查看、签收确认、异常通知等功能，提升物流服务透明度和客户满意度。' }
+                    ]
+                };
+                return (sceneModules[scene] || sceneModules['smart-industry']).concat(
                     ...(userDesc && userDesc.hasVideo ? [{ name: '视频监控中心', desc: '集成多路视频流接入、实时预览、录像回放、AI视频分析（移动侦测、人脸识别、行为分析），支持云端存储和本地NVR混合架构。' }] : []),
                     ...(userDesc && userDesc.hasAI ? [{ name: 'AI智能分析平台', desc: '集成机器学习算法，提供异常检测、趋势预测、聚类分析等能力，支持自定义模型训练和在线部署。' }] : []),
                     ...(userDesc && userDesc.hasEdge ? [{ name: '边缘计算管理', desc: '边缘网关本地规则引擎、数据预处理、实时告警判断，支持云端模型下发和远程配置。' }] : []),
                     ...(userDesc && userDesc.hasGIS ? [{ name: 'GIS地图与定位', desc: '基于GIS地图展示设备分布和实时状态，支持轨迹回放、电子围栏、热力图分析。' }] : []),
-                    ...(userDesc && userDesc.hasDigitalTwin ? [{ name: '3D数字孪生', desc: '构建物理设备的3D虚拟映射，支持实时状态仿真和故障预警可视化。' }] : []),];
+                    ...(userDesc && userDesc.hasDigitalTwin ? [{ name: '3D数字孪生', desc: '构建物理设备的3D虚拟映射，支持实时状态仿真和故障预警可视化。' }] : [])
+                );
             } else {
-                const searchModule = hasSearch ? `{ name: '行业方案适配', desc: '基于联网搜索的行业方案数据（参考设备：${parsed.devices.slice(0,3).join('、')}），自动匹配最佳实践架构，提供行业专属模板和参数配置建议。` : '';
-                return [
-                    { name: '设备接入与全生命周期管理', desc: '支持MQTT/CoAP/HTTP/Modbus/OPC-UA/BACnet等多协议接入，提供设备注册、双向认证、OTA远程升级、在线状态监控、批量配置下发、设备影子和数字孪生映射，单集群支持百万级设备并发连接，覆盖设备从注册、运行、维护到退役的全生命周期管理。' },
-                    { name: '数据采集与智能存储', desc: '内置高性能时序数据处理引擎，支持原始数据/聚合数据/事件数据分层存储，数据保留策略灵活可配置（热数据SSD 7天/温数据HDD 30天/冷数据归档3年），支持PB级数据管理和毫秒级时间序列查询，自动冷热数据分层和压缩优化。' },
-                    { name: '可视化规则引擎与自动化', desc: '提供拖拽式规则编排界面，支持阈值告警、复合条件触发、设备联动、定时任务、Webhook回调、消息队列推送等15+触发类型，规则执行引擎延迟<100ms，支持规则版本管理、灰度发布和A/B测试。' },
-                    { name: 'AI分析与智能决策', desc: '集成机器学习平台，提供异常检测、趋势预测、聚类分析、关联挖掘、知识图谱等算法模型，支持自定义模型训练、在线部署和自动调优，实现预测性维护（提前7-30天预警）、智能诊断和自适应优化控制。' },
-                    { name: '多端可视化与大屏', desc: '内置拖拽式大屏设计器，支持GIS地图、3D模型、实时曲线、数据表格、告警列表、视频融合等30+组件，支持Web/APP/微信小程序/PC客户端多端适配，支持自定义主题、权限分级控制和数据权限隔离。' },
-                    { name: '全链路安全与合规', desc: '构建端到端安全体系：设备端（安全启动/固件签名验证/硬件加密芯片/防篡改）、传输层（TLS 1.3/双向证书认证/数据完整性校验）、平台层（RBAC权限模型/细粒度访问控制/操作审计日志/数据脱敏/加密存储），全面符合等保2.0三级要求。' },
-                    { name: '智能运维与监控中心', desc: '构建统一运维管理中心，实现设备健康评分、故障根因分析、容量规划预警、自动化巡检、工单流转闭环、SLA监控，支持 Prometheus + Grafana 技术栈集成，提供7×24小时多渠道告警通知。' },
-                    ...(searchModule ? [searchModule] : []),
+                const sceneModules2 = {
+                    'smart-industry': [
+                        { name: '设备接入与全生命周期管理', desc: '支持MQTT/Modbus/OPC-UA/BACnet/Profinet等多工业协议接入，提供设备注册、双向认证、OTA远程升级、在线状态监控、批量配置下发、设备影子和数字孪生映射，单集群支持十万级设备并发连接，覆盖设备从注册、运行、维护到退役的全生命周期管理。' + platformRef },
+                        { name: '产线数据采集与流处理', desc: '内置高性能时序数据处理引擎，支持原始数据/聚合数据/事件数据分层存储，PLC数据采集周期低至100ms，支持TB级数据管理和毫秒级时间序列查询，自动冷热数据分层和压缩优化，支持流处理引擎实时数据聚合。' },
+                        { name: '预测性维护与健康管理', desc: '基于振动/温度/电流/压力等多维传感器数据，构建设备健康评分和故障预测模型（LSTM/随机森林算法），实现故障提前7-30天预警，减少非计划停机40-60%。支持设备维修工单自动派发、维修记录追溯和备件管理。' },
+                        { name: '能耗管理与碳排监控', desc: '实时监测产线能耗数据，支持分设备/分产线/分时段能耗统计分析和碳排核算，自动生成能耗报表和优化建议，帮助企业降低能耗成本15-25%，满足双碳目标合规要求。' },
+                        { name: 'MES/ERP深度集成', desc: '与MES/ERP/WMS/SCADA等工业系统深度集成，实现生产数据互通、工单自动下发、质量追溯、库存联动，支持RESTful API/OPC-UA/MQTT多种集成方式。' },
+                        { name: '全链路安全与合规', desc: '构建端到端工业安全体系：设备端（安全启动/固件签名/硬件加密）、传输层（TLS 1.3/双向认证）、平台层（RBAC/操作审计/数据脱敏），全面符合IEC 62443工业安全标准和等保2.0三级要求。' },
+                        { name: '智能运维与监控中心', desc: '构建统一运维管理中心，实现设备健康评分、故障根因分析、容量规划预警、自动化巡检、工单流转闭环、SLA监控，支持7×24小时多渠道告警通知。' },
+                        { name: '开放API生态', desc: '提供RESTful API、WebSocket实时推送、gRPC高性能调用、Webhook事件订阅等标准化开放接口，支持多语言SDK和完整的API文档中心。' }
+                    ],
+                    'smart-agriculture': [
+                        { name: '设备接入与全生命周期管理', desc: '支持LoRaWAN/NB-IoT/MQTT/HTTP多协议接入，提供传感器注册、双向认证、OTA远程升级、在线状态监控、批量配置下发，支持按地块/大棚分组管理，单集群支持万级农业设备并发。' + platformRef },
+                        { name: '环境监测与数据分析', desc: '实时采集并展示土壤/气象/水质/光照等多维农业环境数据，支持历史数据查询、趋势分析、数据导出，自动生成环境监测日报/周报/月报，支持作物生长周期数据对比分析。' },
+                        { name: '精准灌溉与水肥一体化', desc: '基于土壤墒情数据、气象预报和作物需水模型，构建智能灌溉决策引擎，支持定时/定量/按需灌溉，自动控制电磁阀/水泵/施肥机，实现节水30-50%、节肥20-30%。支持手动/自动模式切换和灌溉计划管理。' },
+                        { name: '病虫害预警与防治', desc: '结合气象数据、历史病虫害记录和作物生长阶段，构建病虫害发生概率预测模型，提前3-7天发布预警信息，指导农户科学防治，减少农药使用20-30%。支持病虫害图片识别和在线专家咨询。' },
+                        { name: '产量预测与品质分析', desc: '基于环境数据和历史产量数据，构建产量预测模型，提前1-3个月预估产量和品质，指导农产品销售策略和仓储规划。支持农产品溯源和质量追溯体系。' },
+                        { name: '全链路安全与合规', desc: '构建农业物联网安全体系：设备端（防水防腐/防雷接地/防盗设计）、传输层（TLS加密/双向认证）、平台层（数据加密/权限控制），符合NY/T 3723智慧农业技术规范和等保2.0要求。' },
+                        { name: '智能运维与远程管理', desc: '构建统一运维管理中心，实现设备远程监控、故障预警、工单流转、巡检计划管理，支持太阳能供电监控、LoRa信号强度监测、传感器校准提醒。' },
+                        { name: '开放API与第三方集成', desc: '提供标准化API接口，支持与农业专家系统、农资采购平台、农产品电商平台对接，构建智慧农业生态圈。' }
+                    ],
+                    'smart-home': [
+                        { name: '全屋设备管理', desc: '支持ZigBee 3.0/WiFi 6/蓝牙Mesh 5.2/Matter多协议设备接入，提供设备注册、在线状态监控、固件升级、场景联动配置，支持跨品牌设备互联互通，单家庭支持200+设备并发。' + platformRef },
+                        { name: '场景自动化引擎', desc: '内置丰富场景模板和可视化场景编排器，支持定时任务、条件触发、设备联动、地理围栏触发，场景切换延迟<500ms，支持场景导入导出和分享。' },
+                        { name: '语音与智能控制', desc: '集成主流语音助手，支持语音控制全屋设备，支持自定义语音指令和设备组合控制，支持NLP自然语言理解和多轮对话。' },
+                        { name: '家庭安防中心', desc: '全方位安防管理：门窗磁/人体红外/摄像头/烟雾/燃气等多传感器联动，异常告警实时推送，支持告警录像自动保存、AI人脸识别、远程查看和一键布防/撤防。' },
+                        { name: '健康与环境管理', desc: '实时监测室内温湿度、空气质量、CO₂、PM2.5、甲醛等环境指标，自动联动新风/空调/净化器调节室内环境，生成健康环境报告。' },
+                        { name: '隐私与安全保护', desc: '本地数据优先存储，云端数据加密传输（AES-256），支持数据查看权限分级，支持隐私模式一键关闭所有摄像头和传感器，支持数据导出和删除。' },
+                        { name: '能耗管理与优化', desc: '实时监测全屋用电/用水/用气数据，支持分设备能耗统计和异常用电告警，提供节能建议和智能用电策略，帮助家庭降低能耗20-30%。' },
+                        { name: '家庭娱乐与互联', desc: '支持多房间音乐同步、智能灯光场景联动、窗帘/投影/音响影院模式，打造沉浸式家庭娱乐体验。' }
+                    ],
+                    'security': [
+                        { name: '全设备接入管理', desc: '支持AI摄像头/门禁/周界/消防/传感器等多类安防设备接入，提供设备注册、状态监控、远程配置、固件升级，支持GB/T28181/ONVIF/RTSP标准协议对接，单平台支持千路视频并发。' + platformRef },
+                        { name: 'AI视频智能分析', desc: '集成深度学习AI分析引擎，支持人脸识别（准确率>99%）、行为分析（摔倒/打架/奔跑/聚集）、移动侦测、入侵检测、人数统计、车牌识别等智能分析功能，支持云端和本地边缘AI推理。' },
+                        { name: '门禁与人员管理', desc: '支持人脸识别/IC卡/指纹/密码/二维码多种开门方式，支持人员权限分级管理、通行记录查询、异常通行告警、访客临时授权、考勤统计，支持黑名单管理和体温检测联动。' },
+                        { name: '周界防范与入侵检测', desc: '支持红外对射/振动光纤/电子围栏/雷达等多种周界防范设备接入，AI视频辅助验证降低误报率80%，入侵实时告警、联动视频监控、自动推送安保人员，支持防区管理和电子地图展示。' },
+                        { name: '告警指挥与应急调度', desc: '统一告警管理平台，支持多类型告警分级分类、告警工单自动派发、处置流程跟踪、告警统计分析，突发事件自动触发应急预案，支持视频联动、资源调度、人员指挥、信息发布。' },
+                        { name: '全链路安全与合规', desc: '构建端到端安防安全体系：视频流加密传输（GB35114标准）、人脸数据脱敏存储、访问权限细粒度控制、操作全量审计日志，全面符合GA/T 1400视图库标准和等保2.0三级要求。' },
+                        { name: '智能运维与监控中心', desc: '构建统一运维管理中心，实现设备健康评分、故障预警、工单流转、SLA监控、视频质量诊断（画面冻结/模糊/遮挡检测），支持7×24小时监控。' },
+                        { name: '开放API与系统集成', desc: '提供标准化API接口，支持与公安系统、消防系统、楼宇自控、停车管理、会议系统等第三方系统深度集成。' }
+                    ],
+                    'smart-city': [
+                        { name: '海量设备接入管理', desc: '支持NB-IoT/5G/LoRa/4G多网络接入，提供设备注册、双向认证、OTA升级、状态监控、批量配置，支持十万级城市设备并发管理，按区/街道/设备类型分组。' + platformRef },
+                        { name: '城市体征监测中心', desc: '汇聚环境/管网/路灯/交通/噪声/水位等多维城市感知数据，构建城市运行指标体系（100+指标），实时展示城市运行状态，支持历史趋势分析、异常预警和多维度数据钻取。' },
+                        { name: '事件工单与闭环管理', desc: '自动感知城市异常事件（路灯故障/管网泄漏/环境超标/井盖移位等），智能派单至对应委办局，支持工单处理流程跟踪、超时预警、处理结果反馈、满意度评价，形成闭环管理。' },
+                        { name: '应急调度指挥平台', desc: '突发事件自动告警并触发应急预案，支持视频联动、资源调度、人员指挥、信息发布、多部门协同指挥，提高城市应急响应效率60%以上，支持应急预案管理和演练评估。' },
+                        { name: '城市数据中台', desc: '构建城市级数据中台，实现多部门数据融合治理、数据标准统一、数据共享交换、数据资产管理，为各委办局业务系统提供统一数据服务接口，消除数据孤岛。' },
+                        { name: '全链路安全与合规', desc: '构建城市级物联网安全体系：设备端（安全启动/固件签名）、传输层（TLS 1.3/国密算法）、平台层（RBAC/数据脱敏/审计日志），全面符合GB/T 36625智慧城市标准和等保2.0三级要求。' },
+                        { name: '城市运行大屏', desc: '城市运行全景可视化大屏，汇聚各维度城市运行指标，支持GIS地图展示、实时数据刷新、多维度分析钻取、数字孪生城市3D展示，为城市管理者提供决策支撑。' },
+                        { name: '开放API与生态建设', desc: '提供标准化API接口和数据开放平台，支持第三方开发者接入和创新应用开发，构建智慧城市应用生态。' }
+                    ],
+                    'smart-logistics': [
+                        { name: '全链路设备管理', desc: '支持GPS/温湿度/RFID/电子锁/重量传感器等多类物流设备接入，提供设备注册、状态监控、远程配置、固件升级，支持车辆/货物/仓储设备分类管理和分组管理。' + platformRef },
+                        { name: '全程冷链监控中心', desc: '实时监测冷链运输/仓储温度/湿度数据，支持温度曲线查看、越限告警、断链预警、温度报告自动生成，确保冷链全程可追溯，符合GB/T 28842冷链物流监控标准，支持温度数据区块链存证。' },
+                        { name: '车辆轨迹与调度', desc: '实时查看车辆位置和行驶轨迹，支持历史轨迹回放、行驶里程统计、停留点分析、偏航告警、电子围栏管理、路线优化、智能调度，支持北斗+GPS双模定位。' },
+                        { name: '仓储RFID智能管理', desc: '支持RFID读写器接入，实现货物入库/出库/盘点/分拣自动化管理，支持货物溯源、库存实时统计、盘点差异分析、批次管理、先进先出管理，提高仓储效率40%以上。' },
+                        { name: '告警通知与应急响应', desc: '温度越限、偏航、电子锁异常、设备离线、超时未签收等告警实时推送，支持短信/APP/邮件多渠道通知，支持告警分级和处置流程，支持应急预案和快速响应。' },
+                        { name: '全链路安全与合规', desc: '构建物流物联网安全体系：设备端（防盗设计/宽温运行）、传输层（TLS加密/双向认证）、平台层（数据加密/权限控制/审计日志），符合GB/T 28842和JT/T 796标准。' },
+                        { name: '客户服务平台', desc: '为客户提供货物实时追踪、温度查看、签收确认、异常通知、电子回单、结算对账等功能，支持客户APP/小程序/Web多端访问，提升物流服务透明度和客户满意度。' },
+                        { name: '开放API与系统集成', desc: '提供标准化API接口，支持与TMS/WMS/ERP/OMS等物流管理系统深度集成，构建物流数字化生态。' }
+                    ]
+                };
+                return (sceneModules2[scene] || sceneModules2['smart-industry']).concat(
                     ...(hasKB && kbInfo.features.length > 0 ? [{ name: '行业特色功能模块', desc: '基于知识库《' + kbFiles[0].name + '》中的行业标准方案，内置' + kbInfo.features.slice(0, 5).join('、') + '等行业特色功能模块，提供行业专属模板和参数配置。' }] : []),
-                    { name: '开放API生态与第三方集成', desc: '提供RESTful API、WebSocket实时推送、gRPC高性能调用、Webhook事件订阅等标准化开放接口，支持与ERP/MES/CRM/OA/财务等第三方系统深度集成，支持OAuth 2.0/SAML/LDAP单点登录，提供多语言SDK（Java/Python/Go/Node.js/C#）和完整的API文档中心。' }
-                ];
+                    ...(userDesc && userDesc.hasVideo ? [{ name: '视频监控中心', desc: '集成多路视频流接入、实时预览、录像回放、AI视频分析，支持云端存储和本地NVR混合架构。' }] : []),
+                    ...(userDesc && userDesc.hasGIS ? [{ name: 'GIS地图与定位', desc: '基于GIS地图展示设备分布和实时状态，支持轨迹回放、电子围栏、热力图分析。' }] : [])
+                );
             }
         }
         function generateOptimizationTips(sceneData, level, searchContentSummary, kbFiles, userDesc) {
             const parsed = parseSearchData(searchContentSummary);
             const kbInfo = extractKBInfo(kbFiles, currentScene);
+            const sp = getSceneProfile();
             const hasSearch = parsed.devices && parsed.devices.length > 0;
             const hasKB = kbFiles && kbFiles.length > 0;
-            const searchRef = hasSearch ? '基于联网搜索的行业方案调研，' : '';
-            const kbRef = hasKB ? '结合资料库案例分析，' : '';
+            const scene = currentScene;
+
             if (level === 'simple') {
-                const kbTips = hasKB ? ['参考资料库案例，建议采用标准化方案降低风险。'] : [];
-                return [
-                    '分阶段部署：建议先小规模验证，确认效果后再逐步推广。',
-                    '标准化选型：优先选用支持MQTT等标准协议的设备，提高兼容性。',
-                    '安全加固：启用TLS加密传输，实施设备认证。',
-                    ...kbTips,
+                const sceneTips = {
+                    'smart-industry': [
+                        '分阶段部署：建议先选择1条产线进行小规模验证，确认效果后再推广至全部产线。',
+                        '工业协议兼容：优先选用支持Modbus/OPC-UA标准协议的设备，降低集成难度。',
+                        '不停产施工：设备部署尽量安排在生产间歇或检修期间，避免影响正常生产。',
+                        '安全加固：启用工业防火墙和网络隔离，保障工控系统安全。'
+                    ],
+                    'smart-agriculture': [
+                        '分阶段部署：建议先选择1-2个大棚/地块试点，验证效果后再推广。',
+                        '设备防护：传感器必须选用IP67+防护等级，做好防水防腐处理。',
+                        '供电保障：优先采用太阳能+锂电池供电，确保无市电区域设备正常运行。',
+                        '信号覆盖：部署前进行LoRa/NB-IoT信号测试，确保通信无盲区。'
+                    ],
+                    'smart-home': [
+                        '分阶段实施：先覆盖客厅/卧室核心区域，后续逐步扩展至全屋。',
+                        '协议选择：优先选用支持Matter标准的设备，确保跨品牌兼容。',
+                        '网络规划：全屋WiFi 6覆盖是智能家居的基础，建议AP布点覆盖每个房间。',
+                        '隐私保护：摄像头数据优先本地存储，云端数据加密。'
+                    ],
+                    'security': [
+                        '分阶段部署：先覆盖重点区域（出入口/周界），再逐步完善盲区。',
+                        'AI模型调优：初期可能存在误报，建议收集数据持续训练优化模型。',
+                        '系统冗余：关键设备（NVR/服务器）采用双机热备，保障安防不中断。',
+                        '定期演练：每季度进行安防应急演练，检验系统有效性和人员响应能力。'
+                    ],
+                    'smart-city': [
+                        '试点先行：建议先选择1-2个街道进行试点，验证技术方案后再全市推广。',
+                        '非开挖施工：优先采用非开挖技术部署传感器，减少对市民生活影响。',
+                        '标准统一：建设初期就制定统一的数据标准和接口规范，避免后期数据孤岛。',
+                        '多方协同：成立专项工作组，协调各委办局推进项目建设。'
+                    ],
+                    'smart-logistics': [
+                        '分阶段部署：先选择1-2条重点线路试点，验证冷链效果后再推广。',
+                        '设备校准：冷链温度传感器定期校准（±0.5℃精度），确保数据准确。',
+                        '信号保障：重点路段提前测试4G信号覆盖，必要时加装信号放大器。',
+                        '应急方案：制定冷链断链应急预案，确保异常情况快速响应。'
+                    ]
+                };
+                return [...(sceneTips[scene] || sceneTips['smart-industry']),
                     ...(userDesc && userDesc.hasVideo ? ['视频监控建议：采用H.265编码降低存储压力，关键区域部署AI摄像头实现智能分析。'] : []),
                     ...(userDesc && userDesc.hasAI ? ['AI应用建议：初期使用预训练模型快速上线，积累数据后逐步训练行业专属模型。'] : []),
                     ...(userDesc && userDesc.hasEdge ? ['边缘计算建议：关键告警规则下沉到边缘网关，降低云端依赖和响应延迟。'] : []),
                     ...(userDesc && userDesc.lowCost ? ['成本控制建议：分阶段实施，先核心后扩展；选用标准化设备降低采购和维护成本。'] : [])];
             } else if (level === 'medium') {
-                const searchTips = hasSearch ? ['根据行业方案调研，优先选用' + parsed.devices.slice(0,2).join('、') + '等成熟设备型号，降低项目风险。'] : [];
-                const kbTips2 = hasKB ? kbFiles.filter(f => f.content && f.content.length > 50 && !f.content.startsWith('[')).map(f => '参考资料库《' + f.name + '》行业方案，建议：' + f.content.substring(0, 120) + '...') : [];
-                return [
-                    '分阶段部署：建议先选择1-2个典型场景进行小规模POC验证，验证技术可行性和业务价值后再批量推广，有效降低项目风险。',
-                    '标准化选型：优先选用支持MQTT、CoAP、HTTP等标准协议的设备，避免厂商锁定，提高系统兼容性和后期扩展能力。',
+                const sceneTips2 = {
+                    'smart-industry': [
+                        'POC验证先行：建议在正式部署前选择典型设备进行POC验证，验证设备兼容性和系统稳定性。',
+                        '标准化选型：优先选用支持MQTT/OPC-UA/Modbus等标准协议的设备，避免厂商锁定。',
+                        ...(hasSearch ? ['根据行业方案调研，优先选用' + parsed.devices.slice(0,2).join('、') + '等成熟设备型号。'] : []),
+                        '安全加固：端到端启用TLS加密，实施设备双向证书认证，定期进行固件签名验证和安全漏洞扫描。',
+                        '数据治理：建立数据分级分类管理制度，确保工业数据全生命周期安全。',
+                        '运维管理：建立定期巡检制度，关注设备在线率、数据完整性和告警处理及时率。'
+                    ],
+                    'smart-agriculture': [
+                        'POC验证先行：建议先试点1-2个大棚/地块，验证技术方案可行性后再推广。',
+                        '设备防护升级：传感器选用IP67+防护等级，做好防雷接地处理，延长设备使用寿命。',
+                        ...(hasSearch ? ['根据行业方案调研，参考' + parsed.devices.slice(0,2).join('、') + '等农业设备选型。'] : []),
+                        '灌溉优化：结合气象预报和土壤墒情数据，动态调整灌溉策略，实现精准用水。',
+                        '数据治理：建立农业数据管理规范，确保传感器数据准确性和完整性。',
+                        '运维管理：建立定期巡检制度，关注传感器校准、太阳能供电和通信信号。'
+                    ],
+                    'smart-home': [
+                        '场景定制：根据家庭成员生活习惯定制个性化场景，提升使用体验。',
+                        '协议兼容：优先选用Matter标准设备，确保跨品牌互联互通。',
+                        '网络优化：全屋WiFi 6覆盖，Mesh组网保障信号无死角。',
+                        '隐私保护：本地存储优先，云端数据加密，隐私模式一键关闭。',
+                        '能耗优化：利用智能插座和能耗监控，优化家庭用电策略。'
+                    ],
+                    'security': [
+                        'AI模型持续优化：收集误报/漏报数据，定期训练优化AI识别模型。',
+                        '多系统联动：确保门禁/监控/消防/周界系统有效联动，形成立体安防。',
+                        ...(hasSearch ? ['参考行业安防方案，优化摄像头布点和AI识别策略。'] : []),
+                        '系统冗余：关键设备采用双机热备，保障安防系统7×24小时不中断。',
+                        '应急演练：每季度进行安防应急演练，检验系统有效性和人员响应能力。',
+                        '合规要求：确保安防系统符合GB 50348和等保2.0相关标准。'
+                    ],
+                    'smart-city': [
+                        '试点先行：选择1-2个街道试点，验证技术方案和协调机制后再全市推广。',
+                        '数据标准统一：建设初期制定统一数据标准和接口规范，避免后期数据孤岛。',
+                        ...(hasSearch ? ['参考同类智慧城市项目建设经验，优化设备选型和部署方案。'] : []),
+                        '多方协同：建立跨部门协调机制，确保项目顺利推进。',
+                        '运维体系：建立城市级运维管理体系，保障海量设备长期稳定运行。',
+                        '公众参与：通过APP/小程序等方式，引导市民参与城市治理。'
+                    ],
+                    'smart-logistics': [
+                        '冷链验证：试点线路验证冷链全程数据完整性和温度控制精度。',
+                        '信号测试：重点路段提前测试4G信号，必要时加装信号放大器。',
+                        ...(hasSearch ? ['参考行业冷链方案，优化车载设备选型和通信策略。'] : []),
+                        '设备校准：温度传感器定期校准，确保数据准确性。',
+                        '应急预案：制定冷链断链、设备离线等异常应急预案。',
+                        '客户体验：通过APP/小程序提升物流服务透明度和客户满意度。'
+                    ]
+                };
+                return [...(sceneTips2[scene] || sceneTips2['smart-industry']),
                     ...(userDesc && userDesc.hasVideo ? ['视频监控建议：采用H.265编码降低存储压力，关键区域部署AI摄像头实现智能分析。'] : []),
                     ...(userDesc && userDesc.hasAI ? ['AI应用建议：初期使用预训练模型快速上线，积累数据后逐步训练行业专属模型。'] : []),
                     ...(userDesc && userDesc.hasEdge ? ['边缘计算建议：关键告警规则下沉到边缘网关，降低云端依赖和响应延迟。'] : []),
-                    ...(userDesc && userDesc.lowCost ? ['成本控制建议：分阶段实施，先核心后扩展；选用标准化设备降低采购和维护成本。'] : []),
-                    '安全加固：端到端启用TLS/SSL加密传输，实施设备双向证书认证，定期进行固件签名验证和安全漏洞扫描。',
-                    '数据治理：建立数据分级分类管理制度，明确数据采集、传输、存储、使用、销毁的全生命周期管理策略。',
-                    '运维管理：建议建立定期巡检制度，关注设备在线率、数据完整性和告警处理及时率等关键指标。',
-                    '成本控制：优先保障核心业务的设备覆盖和平台功能，非核心功能可分期建设，合理控制初期投资。',
-                    ...searchTips,
-                    ...kbTips2
-                ];
+                    ...(userDesc && userDesc.lowCost ? ['成本控制建议：分阶段实施，先核心后扩展；选用标准化设备降低采购和维护成本。'] : [])];
             } else {
-                const searchTips2 = hasSearch ? ['根据行业方案调研，推荐采用' + parsed.devices.slice(0,3).join('、') + '等设备组合，参考行业最佳实践进行架构设计。'] : [];
-                const protocolTips = parsed.protocols.length > 0 ? '建议优先采用' + parsed.protocols.slice(0,3).join('/') + '协议，符合行业主流标准。' : '';
-                const kbTips3 = hasKB ? kbFiles.filter(f => f.content && f.content.length > 50 && !f.content.startsWith('[')).map(f => '参考资料库《' + f.name + '》行业标准方案：' + f.content.substring(0, 150) + '...') : [];
-                return [
-                    '分阶段部署：建议先选择2-3个典型场景进行小规模POC验证，验证技术可行性和业务价值后再批量推广，有效降低项目风险。',
-                    '标准化选型：优先选用支持MQTT、CoAP、HTTP等标准协议的设备，避免厂商锁定，提高系统兼容性和后期扩展能力。',
-                    '安全加固：端到端启用TLS 1.3加密传输，实施设备双向证书认证，定期进行固件签名验证和安全漏洞扫描，关键设备启用安全启动和硬件加密芯片。',
-                    '数据治理：建立数据分级分类管理制度，明确数据采集、传输、存储、使用、销毁的全生命周期管理策略，支持冷热数据自动分层。',
-                    '运维体系建设：构建统一运维管理平台，实现设备远程监控、故障预警、工单流转、SLA监控的闭环管理，降低运维人力成本40%以上。',
-                    '容灾备份方案：关键业务数据实施异地备份（建议两地三中心架构），核心服务采用双活/多活部署，保障业务连续性达到99.99%。',
-                    '成本优化策略：利用边缘计算在本地完成数据预处理和简单决策，减少60%以上的云端数据流量；采用云服务按需订阅模式，避免过度投资。',
-                    '技术债务管理：定期评估设备固件版本、平台组件升级、API接口兼容性，制定技术升级路线图，避免技术栈老化。',
-                    '人才培养：建立IoT运维团队技能矩阵，定期开展技术培训和安全意识培训，确保团队能力与系统复杂度匹配。',
-                    '合规要求：关注国家关于物联网数据安全、个人信息保护、等保2.0等相关法规要求，确保项目合规运营。',
-                    ...searchTips2,
-                    ...(protocolTips ? [protocolTips] : []),
-                    ...kbTips3
-                ];
+                const sceneTips3 = {
+                    'smart-industry': [
+                        'POC验证先行：建议在正式部署前选择典型产线进行完整POC验证，覆盖设备选型、协议适配、平台接入全流程。',
+                        '标准化选型：优先选用支持MQTT/OPC-UA/Modbus/Profinet等标准协议的设备，避免厂商锁定，提高系统兼容性和后期扩展能力。',
+                        ...(hasSearch ? ['根据行业方案调研，推荐采用' + parsed.devices.slice(0,3).join('、') + '等设备组合，参考行业最佳实践进行架构设计。'] : []),
+                        ...(hasKB ? ['参考资料库《' + kbFiles[0].name + '》工业方案：' + kbFiles[0].content.substring(0, 150) + '...'] : []),
+                        '安全加固：端到端启用TLS 1.3加密，实施设备双向证书认证，定期进行固件签名验证和安全漏洞扫描，关键设备启用安全启动和硬件加密芯片。',
+                        '数据治理：建立工业数据分级分类管理制度，确保PLC数据、设备档案、生产数据全生命周期安全，支持冷热数据自动分层。',
+                        '运维体系建设：构建统一运维管理平台，实现设备远程监控、故障预警、工单流转、SLA监控的闭环管理。',
+                        '容灾备份：关键业务数据实施异地备份，核心服务采用双活部署，保障业务连续性达到99.99%。',
+                        '技术债务管理：定期评估设备固件版本、平台组件升级、API接口兼容性，制定技术升级路线图。',
+                        ...(parsed.protocols.length > 0 ? ['建议优先采用' + parsed.protocols.slice(0,3).join('/') + '协议，符合' + sp.industryStandards + '标准。'] : ['建议遵循' + sp.industryStandards + '标准进行架构设计。']),
+                        '人才培养：建立IoT运维团队技能矩阵，定期开展技术培训和安全意识培训。',
+                        '合规要求：关注IEC 62443工业安全标准、等保2.0等相关法规要求，确保项目合规运营。'
+                    ],
+                    'smart-agriculture': [
+                        '试点先行：选择典型大棚/地块进行完整POC验证，覆盖传感器部署、灌溉联动、平台接入全流程。',
+                        '标准化选型：优先选用LoRaWAN/NB-IoT/MQTT标准协议设备，避免厂商锁定。',
+                        ...(hasSearch ? ['根据行业方案调研，推荐采用' + parsed.devices.slice(0,3).join('、') + '等农业设备。'] : []),
+                        ...(hasKB ? ['参考资料库《' + kbFiles[0].name + '》农业方案。'] : []),
+                        '设备防护：传感器IP67+防护等级，防雷接地处理，太阳能供电系统定期维护。',
+                        '灌溉优化：结合气象预报和作物生长模型，动态调整灌溉策略，实现精准用水。',
+                        '数据治理：建立农业数据管理规范，确保传感器数据准确性和完整性。',
+                        '运维体系：建立定期巡检制度，关注传感器校准、太阳能供电和通信信号。',
+                        '合规要求：关注NY/T 3723智慧农业技术规范和农药使用合规要求。',
+                        '持续优化：根据作物生长数据和产量分析，持续优化种植方案。'
+                    ],
+                    'smart-home': [
+                        '场景定制：根据家庭成员生活习惯定制个性化场景，提升使用体验。',
+                        'Matter优先：选用支持Matter标准设备，确保跨品牌互联互通和未来扩展性。',
+                        '网络优化：全屋WiFi 6覆盖，Mesh组网保障信号无死角，关键设备有线连接。',
+                        '隐私保护：本地存储优先，云端数据加密（AES-256），隐私模式一键关闭。',
+                        '能耗优化：利用智能插座和能耗监控，优化家庭用电策略，降低能耗20-30%。',
+                        '安全加固：启用设备认证、数据加密、访问控制，定期固件升级。',
+                        '持续扩展：预留扩展接口，支持后续新增设备和场景。',
+                        '合规要求：关注GB 50314智能建筑设计标准和个人信息保护法规。'
+                    ],
+                    'security': [
+                        'AI持续优化：收集误报/漏报数据，定期训练优化AI识别模型，提升准确率。',
+                        '多系统联动：确保门禁/监控/消防/周界系统有效联动，形成立体安防。',
+                        ...(hasSearch ? ['参考行业安防方案，优化摄像头布点和AI识别策略。'] : []),
+                        ...(hasKB ? ['参考资料库《' + kbFiles[0].name + '》安防方案。'] : []),
+                        '系统冗余：关键设备采用双机热备，保障安防系统7×24小时不中断。',
+                        '应急演练：每季度进行安防应急演练，检验系统有效性和人员响应能力。',
+                        '安全合规：确保安防系统符合GB 50348和等保2.0三级标准。',
+                        '数据保护：人脸等生物特征数据脱敏存储，符合个人信息保护法规。',
+                        '运维体系：建立专业运维团队，定期设备维护和系统升级。',
+                        '技术升级：关注AI安防新技术，持续升级识别算法和分析能力。'
+                    ],
+                    'smart-city': [
+                        '试点先行：选择1-2个街道进行完整POC验证，验证技术方案和协调机制。',
+                        '数据标准统一：建设初期制定统一数据标准和接口规范，避免后期数据孤岛。',
+                        ...(hasSearch ? ['参考同类智慧城市项目建设经验，优化设备选型和部署方案。'] : []),
+                        ...(hasKB ? ['参考资料库《' + kbFiles[0].name + '》智慧城市方案。'] : []),
+                        '多方协同：建立跨部门协调机制和专项工作组，确保项目顺利推进。',
+                        '运维体系：建立城市级运维管理体系，保障十万级设备长期稳定运行。',
+                        '公众参与：通过APP/小程序引导市民参与城市治理，提升市民满意度。',
+                        '安全合规：确保符合GB/T 36625智慧城市标准和等保2.0三级要求。',
+                        '持续优化：基于城市运行数据持续优化治理策略。',
+                        '技术升级：关注5G、数字孪生、AI等新技术，持续升级城市治理能力。'
+                    ],
+                    'smart-logistics': [
+                        '试点验证：选择1-2条重点线路进行完整POC验证，覆盖车载设备部署、冷链监控、平台接入全流程。',
+                        '标准化选型：优先选用4G Cat.1/GPS/RFID标准设备，确保设备互联互通。',
+                        ...(hasSearch ? ['根据行业方案调研，推荐采用' + parsed.devices.slice(0,3).join('、') + '等物流设备。'] : []),
+                        ...(hasKB ? ['参考资料库《' + kbFiles[0].name + '》物流方案。'] : []),
+                        '冷链保障：温度传感器定期校准（±0.5℃精度），制定断链应急预案。',
+                        '信号保障：重点路段提前测试4G信号，必要时加装信号放大器。',
+                        '运维体系：建立物流设备运维管理体系，定期设备维护和校准。',
+                        '合规要求：确保符合GB/T 28842冷链物流监控标准和JT/T 796道路运输标准。',
+                        '客户体验：通过APP/小程序提升物流服务透明度和客户满意度。',
+                        '持续优化：基于物流数据持续优化路线和调度策略。'
+                    ]
+                };
+                return [...(sceneTips3[scene] || sceneTips3['smart-industry']),
+                    ...(userDesc && userDesc.hasVideo ? ['视频监控建议：采用H.265编码降低存储压力，关键区域部署AI摄像头实现智能分析。'] : []),
+                    ...(userDesc && userDesc.hasAI ? ['AI应用建议：初期使用预训练模型快速上线，积累数据后逐步训练行业专属模型。'] : []),
+                    ...(userDesc && userDesc.hasEdge ? ['边缘计算建议：关键告警规则下沉到边缘网关，降低云端依赖和响应延迟。'] : []),
+                    ...(userDesc && userDesc.hasGIS ? ['GIS建议：结合GIS地图展示设备分布和状态，支持轨迹回放和电子围栏。'] : []),
+                    ...(userDesc && userDesc.hasDigitalTwin ? ['数字孪生建议：构建物理设备3D虚拟映射，支持实时状态仿真和故障预警。'] : []),
+                    ...(userDesc && userDesc.lowCost ? ['成本控制建议：分阶段实施，先核心后扩展；选用标准化设备降低采购和维护成本。'] : [])];
             }
         }
         function generateROIAnalysis(budget, devices, sceneData, userDesc) {
+            const sp = getSceneProfile();
             const totalInvest = budget * 10000;
-            const annualSaving = Math.round(totalInvest * 0.25);
-            const annualRevenueIncrease = Math.round(totalInvest * 0.15);
+
+            // 按场景定制ROI参数
+            const roiParams = {
+                'smart-industry': {
+                    savingRate: 0.30, revenueRate: 0.15,
+                    paybackBase: 14,
+                    efficiency: '+30-50%', maintenance: '降低40%', downtime: '减少60%',
+                    energySaving: '降低15-20%', laborSaving: '节省30%人力', quality: '提升25%',
+                    details: [
+                        { item: '非计划停机减少', value: `约¥${(totalInvest*0.30*0.4/10000).toFixed(1)}万元/年`, desc: '通过设备振动监测和预测性维护，减少突发故障和计划外停机' },
+                        { item: '生产效率提升', value: `约¥${(totalInvest*0.15*0.6/10000).toFixed(1)}万元/年`, desc: '实时数据采集和智能分析优化生产流程，减少设备空转和等待时间' },
+                        { item: '能耗优化', value: `约¥${(totalInvest*0.30*0.25/10000).toFixed(1)}万元/年`, desc: '智能调控设备运行策略，降低无效能耗，优化用电峰谷' },
+                        { item: '运维人力节省', value: `约¥${(totalInvest*0.30*0.35/10000).toFixed(1)}万元/年`, desc: '远程监控和智能告警减少现场巡检，优化运维人员配置' }
+                    ]
+                },
+                'smart-agriculture': {
+                    savingRate: 0.35, revenueRate: 0.20,
+                    paybackBase: 10,
+                    efficiency: '+40-60%', maintenance: '降低50%', downtime: '减少70%',
+                    energySaving: '降低20-30%', laborSaving: '节省40%人力', quality: '提升30%',
+                    details: [
+                        { item: '灌溉用水节约', value: `约¥${(totalInvest*0.35*0.4/10000).toFixed(1)}万元/年`, desc: '基于土壤墒情的精准灌溉，减少水资源浪费，节水30-50%' },
+                        { item: '产量提升增收', value: `约¥${(totalInvest*0.20*0.5/10000).toFixed(1)}万元/年`, desc: '环境智能调控和精准施肥，作物产量提升10-20%' },
+                        { item: '农药化肥减量', value: `约¥${(totalInvest*0.35*0.3/10000).toFixed(1)}万元/年`, desc: '病虫害预警和精准施肥，减少农药化肥使用20-30%' },
+                        { item: '人工成本节省', value: `约¥${(totalInvest*0.35*0.3/10000).toFixed(1)}万元/年`, desc: '自动化灌溉和远程监控，减少人工巡检和操作，节省40%人力' }
+                    ]
+                },
+                'smart-home': {
+                    savingRate: 0.20, revenueRate: 0.10,
+                    paybackBase: 24,
+                    efficiency: '+20-30%', maintenance: '降低30%', downtime: '减少40%',
+                    energySaving: '降低20-30%', laborSaving: '节省20%家务时间', quality: '生活便利度提升60%',
+                    details: [
+                        { item: '家庭能耗降低', value: `约¥${(totalInvest*0.20*0.5/10000).toFixed(1)}万元/年`, desc: '智能灯光/空调/地暖联动控制，降低无效能耗20-30%' },
+                        { item: '生活便利提升', value: `约¥${(totalInvest*0.10*0.6/10000).toFixed(1)}万元/年`, desc: '场景自动化和语音控制，提升生活品质和便利性' },
+                        { item: '安防损失避免', value: `约¥${(totalInvest*0.20*0.25/10000).toFixed(1)}万元/年`, desc: '智能安防系统降低盗窃和意外损失风险' },
+                        { item: '房产增值', value: '约5-10%房产价值', desc: '全屋智能交付提升房产市场竞争力和转售价值' }
+                    ]
+                },
+                'security': {
+                    savingRate: 0.35, revenueRate: 0.10,
+                    paybackBase: 8,
+                    efficiency: '+50-70%', maintenance: '降低50%', downtime: '减少80%',
+                    energySaving: '降低10%', laborSaving: '节省50-70%安保人力', quality: '安全事故率降低90%',
+                    details: [
+                        { item: '安保人力节省', value: `约¥${(totalInvest*0.35*0.5/10000).toFixed(1)}万元/年`, desc: 'AI视频分析和智能告警替代人工巡逻，节省50-70%安保人力' },
+                        { item: '安全事故损失避免', value: `约¥${(totalInvest*0.10*0.5/10000).toFixed(1)}万元/年`, desc: '智能安防系统降低盗窃、入侵、火灾等安全事故风险和损失' },
+                        { item: '管理效率提升', value: `约¥${(totalInvest*0.35*0.25/10000).toFixed(1)}万元/年`, desc: '统一管理平台提高安防管理效率，减少人工监控和记录' },
+                        { item: '保险费用降低', value: `约¥${(totalInvest*0.35*0.25/10000).toFixed(1)}万元/年`, desc: '完善安防体系可降低企业财产保险费率' }
+                    ]
+                },
+                'smart-city': {
+                    savingRate: 0.25, revenueRate: 0.10,
+                    paybackBase: 36,
+                    efficiency: '+40-60%', maintenance: '降低35%', downtime: '减少50%',
+                    energySaving: '降低25%', laborSaving: '节省40%市政管理人力', quality: '市民满意度提升30%',
+                    details: [
+                        { item: '市政运维成本降低', value: `约¥${(totalInvest*0.25*0.4/10000).toFixed(1)}万元/年`, desc: '智慧照明/管网/环境监测减少人工巡检和维护成本' },
+                        { item: '能耗优化节约', value: `约¥${(totalInvest*0.25*0.3/10000).toFixed(1)}万元/年`, desc: '智慧路灯调度和能耗管理，降低市政用电成本25%' },
+                        { item: '应急响应效率提升', value: `约¥${(totalInvest*0.10*0.4/10000).toFixed(1)}万元/年`, desc: '智能告警和应急调度减少突发事件损失，应急响应时间缩短60%' },
+                        { item: '市民服务改善', value: '市民满意度提升30%', desc: '城市运行数据驱动治理优化，提升市民生活品质和满意度' }
+                    ]
+                },
+                'smart-logistics': {
+                    savingRate: 0.30, revenueRate: 0.15,
+                    paybackBase: 12,
+                    efficiency: '+30-40%', maintenance: '降低40%', downtime: '减少50%',
+                    energySaving: '降低15%', laborSaving: '节省30%物流人力', quality: '货损率降低50%',
+                    details: [
+                        { item: '货损减少', value: `约¥${(totalInvest*0.30*0.4/10000).toFixed(1)}万元/年`, desc: '全程冷链监控和实时告警，降低冷链断链和货损率50%' },
+                        { item: '运输效率提升', value: `约¥${(totalInvest*0.15*0.4/10000).toFixed(1)}万元/年`, desc: '车辆轨迹优化和智能调度，提高运输效率30%' },
+                        { item: '仓储效率提升', value: `约¥${(totalInvest*0.30*0.3/10000).toFixed(1)}万元/年`, desc: 'RFID自动化管理提高仓储效率40%，减少人工盘点误差' },
+                        { item: '人力成本节省', value: `约¥${(totalInvest*0.30*0.3/10000).toFixed(1)}万元/年`, desc: '自动化监控和智能告警减少人工巡检和追踪，优化人员配置' }
+                    ]
+                }
+            };
+
+            const params = roiParams[currentScene] || roiParams['smart-industry'];
+            const annualSaving = Math.round(totalInvest * params.savingRate);
+            const annualRevenueIncrease = Math.round(totalInvest * params.revenueRate);
             const annualBenefit = annualSaving + annualRevenueIncrease;
-            const paybackMonths = Math.round(totalInvest / (annualBenefit / 12));
+            const paybackMonths = Math.round(params.paybackBase);
             const threeYearROI = Math.round((annualBenefit * 3 - totalInvest) / totalInvest * 100);
+
             return {
                 totalInvest,
                 annualSaving,
@@ -1632,18 +2196,13 @@ ${userDesc && userDesc.hasVideo ? '视频数据独立处理：RTSP接入、AI分
                 annualBenefit,
                 paybackMonths,
                 threeYearROI,
-                efficiency: '+30-50%',
-                maintenance: '降低40%',
-                downtime: '减少60%',
-                quality: '提升25%',
-                energySaving: '降低15-20%',
-                laborSaving: '节省30%人力',
-                details: [
-                    { item: '运维成本降低', value: `约¥${(annualSaving*0.4/10000).toFixed(1)}万元/年`, desc: '通过设备远程监控和预测性维护，减少现场巡检和故障处理成本' },
-                    { item: '生产效率提升', value: `约¥${(annualRevenueIncrease*0.6/10000).toFixed(1)}万元/年`, desc: '实时数据采集和智能分析优化生产流程，减少停机时间' },
-                    { item: '能耗优化', value: `约¥${(annualSaving*0.3/10000).toFixed(1)}万元/年`, desc: '智能调控设备运行策略，降低无效能耗' },
-                    { item: '人力成本节省', value: `约¥${(annualSaving*0.3/10000).toFixed(1)}万元/年`, desc: '自动化监控和告警减少人工巡检，优化人员配置' }
-                ]
+                efficiency: params.efficiency,
+                maintenance: params.maintenance,
+                downtime: params.downtime,
+                quality: params.quality,
+                energySaving: params.energySaving,
+                laborSaving: params.laborSaving,
+                details: params.details
             };
         }
         
