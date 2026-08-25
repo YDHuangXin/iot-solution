@@ -503,14 +503,7 @@
                                     <option value="private">私有化部署</option>
                                 </select>
                             </div>
-                            <div class="form-group">
-                                <label class="form-label">方案复杂度</label>
-                                <div class="scene-tags" id="complexityTags">
-                                    <div class="scene-tag" data-level="simple">📝 简单方案</div>
-                                    <div class="scene-tag active" data-level="medium">📋 中等方案</div>
-                                    <div class="scene-tag" data-level="complex">📚 复杂方案</div>
-                                </div>
-                            </div>
+
                             <div class="form-group">
                                 <label class="form-label">补充需求描述</label>
                                 <textarea class="form-textarea" id="description" placeholder="请描述您的具体需求..."></textarea>
@@ -554,6 +547,17 @@
                                     <button class="btn-action primary" onclick="exportWord()">📥 导出Word</button>
                                 </div>
                             </div>
+
+                            <!-- 方案版本切换按钮 -->
+                            <div id="versionTabs" style="display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap;">
+                                <button class="version-tab-btn" data-level="simple" style="padding:8px 20px;border-radius:20px;font-size:0.85rem;font-weight:600;cursor:pointer;border:1px solid var(--border);background:transparent;color:var(--text-muted);transition:all 0.3s;">📝 简单方案</button>
+                                <button class="version-tab-btn" data-level="medium" style="padding:8px 20px;border-radius:20px;font-size:0.85rem;font-weight:600;cursor:pointer;border:1px solid var(--border);background:transparent;color:var(--text-muted);transition:all 0.3s;">📋 中等方案</button>
+                                <button class="version-tab-btn active" data-level="complex" style="padding:8px 20px;border-radius:20px;font-size:0.85rem;font-weight:600;cursor:pointer;border:1px solid var(--border);background:var(--primary);color:white;transition:all 0.3s;">📚 复杂方案</button>
+                            </div>
+                            <style>
+                                .version-tab-btn:hover { border-color:var(--primary);color:var(--primary-light); }
+                                .version-tab-btn.active { background:var(--primary)!important;border-color:transparent!important;color:white!important; }
+                            </style>
 
                             <style>
                                 .solution-version-tab { padding:8px 16px;border-radius:8px;font-size:0.82rem;font-weight:600;cursor:pointer;border:none;background:transparent;color:var(--text-muted);transition:all 0.3s; }
@@ -696,7 +700,6 @@ const API = window.location.origin;
 
         document.addEventListener('DOMContentLoaded', () => {
             try { initSceneTags(); } catch(e) { console.error('initSceneTags failed:', e); }
-            try { initComplexityTags(); } catch(e) { console.error('initComplexityTags failed:', e); }
             try { initRangeSliders(); } catch(e) { console.error('initRangeSliders failed:', e); }
             try { initTabs(); } catch(e) { console.error('initTabs failed:', e); }
             try { initKbUpload(); } catch(e) { console.error('initKbUpload failed:', e); }
@@ -711,9 +714,6 @@ const API = window.location.origin;
                 });
             });
         }
-        function initComplexityTags() {
-            // 复杂度标签保留展示，默认始终生成三档方案
-        }
         function initRangeSliders() {
             document.getElementById('budget').addEventListener('input', e => document.getElementById('budgetValue').textContent = e.target.value + '万');
             document.getElementById('devices').addEventListener('input', e => document.getElementById('deviceValue').textContent = e.target.value + '台');
@@ -727,6 +727,23 @@ const API = window.location.origin;
                     document.getElementById('tab-' + tab.dataset.tab).classList.add('active');
                 });
             });
+            // 方案版本切换
+            document.querySelectorAll('.version-tab-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    switchVersion(btn.dataset.level);
+                });
+            });
+        }
+        function switchVersion(level) {
+            if (!window.solutionVersions || !window.solutionVersions[level]) {
+                showToast('请先生成方案');
+                return;
+            }
+            window.currentVersion = level;
+            currentSolution = window.solutionVersions[level];
+            document.querySelectorAll('.version-tab-btn').forEach(b => b.classList.remove('active'));
+            document.querySelector(`.version-tab-btn[data-level="${level}"]`).classList.add('active');
+            renderSolution(currentSolution);
         }
 
         // 认证
@@ -984,7 +1001,9 @@ const API = window.location.origin;
             const medium = buildSolution(sceneData, budget, devices, 'medium');
             const complex = buildSolution(sceneData, budget, devices, 'complex');
 
-            // 步骤3：显示复杂方案（完整版）
+            // 步骤3：保存三档方案，默认显示复杂方案
+            window.solutionVersions = { simple, medium, complex };
+            window.currentVersion = 'complex';
             currentSolution = complex;
             renderSolution(currentSolution);
 
@@ -2284,16 +2303,7 @@ ${userDesc && userDesc.hasVideo ? '视频数据独立处理：RTSP接入、AI分
                     <tr><td>能耗降低</td><td>${s.roiAnalysis.energySaving}</td><td>通过智能调控节约的能耗</td></tr>
                     </table>
                     <h3>收益明细</h3>
-                    ${s.roiAnalysis.details ? s.roiAnalysis.details.map(d => `<p><strong>${d.item}：</strong>${d.value}——${d.desc}</p>`).join('') : ''}
-                    <h3>行业趋势分析</h3>
-                    <p>当前物联网行业正处于高速发展阶段，${s.sceneName.split('物联网')[0] || '物联网'}领域呈现以下趋势：</p>
-                    <ul>
-                    <li><strong>技术融合加速：</strong>AI+IoT（AIoT）深度融合，边缘计算与云计算协同，推动行业从数据采集向智能决策演进。</li>
-                    <li><strong>标准化进程：</strong>国家持续推进物联网标准体系建设，5G RedCap、星闪等新技术为行业应用提供更优选择。</li>
-                    <li><strong>市场规模增长：</strong>据行业报告，中国物联网市场规模预计2025年突破2万亿元，年复合增长率超过15%。</li>
-                    <li><strong>政策驱动：</strong>"十四五"规划明确提出加快数字化转型，各行业物联网改造获政策专项资金支持。</li>
-                    <li><strong>安全合规趋严：</strong>数据安全法、个人信息保护法等法规落地，物联网项目需同步规划安全合规体系。</li>
-                    </ul>` : '',
+                    ${s.roiAnalysis.details ? s.roiAnalysis.details.map(d => `<p><strong>${d.item}：</strong>${d.value}——${d.desc}</p>`).join('') : ''}` : '',
                 // Search Insights
                 s.searchContentSummary && s.searchContentSummary.length > 50 ? `<h2>十三、联网搜索参考数据</h2><p>本方案基于联网搜索的行业方案数据生成，综合参考了以下行业信息：</p><p>${s.searchContentSummary.substring(0, 1500)}</p>` : '',
                 // Footer
