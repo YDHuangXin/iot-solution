@@ -437,7 +437,7 @@ app.post('/api/auth/register', async (req, res) => {
         if (existing.rows.length > 0) return res.status(409).json({ error: '用户名或邮箱已存在' });
         const hash = await bcrypt.hash(password, 10);
         const id = Date.now().toString();
-        await pool.query('INSERT INTO users (id, username, email, password_hash) VALUES ($1, $2, $3, $4)', [id, username, email, hash]);
+        await pool.query('INSERT INTO users (id, username, email, password_hash, created_at) VALUES ($1, $2, $3, $4, $5)', [id, username, email, hash, new Date()]);
         const token = jwt.sign({ id, username }, JWT_SECRET, { expiresIn: '7d' });
         res.json({ token, user: { id, username, email } });
     } catch (e) { console.error('Register error:', e); res.status(500).json({ error: '注册失败' }); }
@@ -496,9 +496,9 @@ app.post('/api/knowledge/upload', authMiddleware, upload.single('file'), async (
         const tags = extractTags(content, originalname);
         const id = Date.now().toString();
         await pool.query(
-            `INSERT INTO knowledge_files (id, user_id, original_name, stored_name, file_type, file_size, content, tags, summary)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
-            [id, req.user.id, originalname, storedName, ext, size, content.substring(0, 50000), JSON.stringify(tags), content.substring(0, 500)]
+            `INSERT INTO knowledge_files (id, user_id, original_name, stored_name, file_type, file_size, content, tags, summary, created_at)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+            [id, req.user.id, originalname, storedName, ext, size, content.substring(0, 50000), JSON.stringify(tags), content.substring(0, 500), new Date()]
         );
         res.json({ id, name: originalname, size, type: ext, tags });
     } catch (e) { console.error('Upload error:', e); res.status(500).json({ error: '上传失败' }); }
@@ -618,9 +618,9 @@ app.post('/api/solutions', authMiddleware, async (req, res) => {
         const { title, scene, budget, device_count, communication, cloud_platform, description, content, kb_file_ids, version } = req.body;
         const id = Date.now().toString();
         await pool.query(
-            `INSERT INTO solutions (id, user_id, title, scene, budget, device_count, communication, cloud_platform, description, content, kb_file_ids, version)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
-            [id, req.user.id, title, scene, budget, device_count, communication, cloud_platform, description, JSON.stringify(content), JSON.stringify(kb_file_ids || []), version || 1]
+            `INSERT INTO solutions (id, user_id, title, scene, budget, device_count, communication, cloud_platform, description, content, kb_file_ids, version, created_at, updated_at)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)`,
+            [id, req.user.id, title, scene, budget, device_count, communication, cloud_platform, description, JSON.stringify(content), JSON.stringify(kb_file_ids || []), version || 1, new Date(), new Date()]
         );
         res.json({ id, success: true });
     } catch (e) { console.error('Save error:', e); res.status(500).json({ error: '保存失败' }); }
