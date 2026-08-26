@@ -930,7 +930,7 @@ const API = window.location.origin;
         function renderKbTable(files, total) {
             const tbody = document.getElementById('kbManageTableBody');
             if (!files.length) { tbody.innerHTML = '<tr><td colspan="6" class="kb-empty-state"><div class="empty-icon">📂</div><p>暂无资料</p></td></tr>'; return; }
-            tbody.innerHTML = files.map(f => `<tr><td><strong>${fileIconMap[f.type]||'📄'} ${f.name}</strong></td><td>${f.type.toUpperCase()}</td><td>${formatSize(f.size)}</td><td>${(f.tags||[]).map(t => `<span class="kb-tag">${t}</span>`).join(' ')}</td><td>${new Date(f.created_at).toLocaleString('zh-CN')}</td><td><button class="hc-btn danger" onclick="deleteKbFile('${f.id}')">删除</button></td></tr>`).join('');
+            tbody.innerHTML = files.map(f => `<tr><td><strong>${fileIconMap[f.type]||'📄'} ${f.name}</strong></td><td>${f.type.toUpperCase()}</td><td>${formatSize(f.size)}</td><td>${(f.tags||[]).map(t => `<span class="kb-tag">${t}</span>`).join(' ')}</td><td>${new Date(f.created_at).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })}</td><td><button class="hc-btn danger" onclick="deleteKbFile('${f.id}')">删除</button></td></tr>`).join('');
         }
         function renderKbPagination(total) {
             const pages = Math.ceil(total / 10); const el = document.getElementById('kbPagination');
@@ -959,7 +959,7 @@ const API = window.location.origin;
             if (!solutions.length) { grid.innerHTML = '<div class="kb-empty-state"><div class="empty-icon">📁</div><p>暂无历史方案，快去生成第一个方案吧！</p></div>'; return; }
             grid.innerHTML = solutions.map(s => {
                 const icons = {'smart-industry':'🏭','smart-agriculture':'🌾','smart-home':'🏠','security':'🔒','smart-city':'🏙️','smart-logistics':'📦'};
-                return `<div class="history-card" onclick="viewSolution('${s.id}')"><div class="hc-header"><span class="hc-icon">${icons[s.scene]||'📄'}</span><span class="hc-title">${s.title}</span></div><div class="hc-meta"><span class="hc-tag">预算¥${s.budget}万</span><span class="hc-tag">${s.device_count}台设备</span><span class="hc-tag">v${s.version}</span></div><div class="hc-footer"><span class="hc-date">${new Date(s.created_at).toLocaleString('zh-CN')}</span><div class="hc-actions"><button class="hc-btn" onclick="event.stopPropagation();viewSolution('${s.id}')">查看</button><button class="hc-btn danger" onclick="event.stopPropagation();deleteSolution('${s.id}')">删除</button></div></div></div>`;
+                return `<div class="history-card" onclick="viewSolution('${s.id}')"><div class="hc-header"><span class="hc-icon">${icons[s.scene]||'📄'}</span><span class="hc-title">${s.title}</span></div><div class="hc-meta"><span class="hc-tag">预算¥${s.budget}万</span><span class="hc-tag">${s.device_count}台设备</span><span class="hc-tag">v${s.version}</span></div><div class="hc-footer"><span class="hc-date">${new Date(s.created_at).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })}</span><div class="hc-actions"><button class="hc-btn" onclick="event.stopPropagation();viewSolution('${s.id}')">查看</button><button class="hc-btn danger" onclick="event.stopPropagation();deleteSolution('${s.id}')">删除</button></div></div></div>`;
             }).join('');
         }
         function renderHistoryPagination(total) {
