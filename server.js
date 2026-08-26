@@ -22,19 +22,31 @@ const UPLOAD_DIR = path.join(__dirname, 'uploads');
 if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 
 const pool = new Pool({
-    connectionString: process.env.DATABASE_URL,
-    ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+    connectionString: process.env.DATABASE_URL || 'postgresql://neondb_owner:npg_LgyzJG5pd4lx@ep-cold-breeze-azkhc61f.c-3.ap-southeast-1.aws.neon.tech/neondb?sslmode=require',
+    ssl: { rejectUnauthorized: false }
 });
 
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 
+// 修复 multer 中文文件名编码问题
+function decodeFilename(name) {
+    if (!name) return '';
+    // multer 会把 UTF-8 字节按 latin1 解析，导致中文乱码
+    // 用 Buffer 从 latin1 还原原始字节，再以 UTF-8 正确解码
+    try {
+        return Buffer.from(name, 'latin1').toString('utf8');
+    } catch {
+        return name;
+    }
+}
+
 const storage = multer.diskStorage({
     destination: (req, file, cb) => cb(null, UPLOAD_DIR),
     filename: (req, file, cb) => {
         const unique = Date.now() + '-' + Math.round(Math.random() * 1E9);
-        cb(null, unique + path.extname(file.originalname));
+        cb(null, unique + path.extname(decodeFilename(file.originalname)));
     }
 });
 const upload = multer({ storage, limits: { fileSize: 20 * 1024 * 1024 } });
@@ -456,7 +468,9 @@ app.get('/api/auth/me', authMiddleware, async (req, res) => {
 app.post('/api/knowledge/upload', authMiddleware, upload.single('file'), async (req, res) => {
     try {
         if (!req.file) return res.status(400).json({ error: '未选择文件' });
-        const { originalname, filename: storedName, size } = req.file;
+        const rawName = req.file.originalname;
+        const originalname = decodeFilename(rawName);
+        const { filename: storedName, size } = req.file;
         const ext = path.extname(originalname).toLowerCase().slice(1);
         const validTypes = ['pdf','doc','docx','txt','xlsx','csv','json','md'];
         if (!validTypes.includes(ext)) { fs.unlinkSync(req.file.path); return res.status(400).json({ error: '不支持的文件格式' }); }
