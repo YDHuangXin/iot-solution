@@ -851,7 +851,15 @@ const API = window.location.origin;
                 }
                 catch { content = `[文件] ${file.name}`; }
                 const tags = extractTags(content, file.name);
-                kbFiles.push({ name: file.name, size: file.size, ext, content, tags });
+                const kbEntry = { name: file.name, size: file.size, ext, content, tags };
+                // 自动上传到服务器知识库，使资料库页面可见
+                try {
+                    const fd = new FormData(); fd.append('file', file);
+                    const ur = await fetch(API + '/api/knowledge/upload', { method: 'POST', headers: { 'Authorization': 'Bearer '+authToken }, body: fd });
+                    const ud = await ur.json();
+                    if (ur.ok && ud.id) kbEntry.id = ud.id;
+                } catch {}
+                kbFiles.push(kbEntry);
                 addKbFileItem(file.name, file.size, ext, tags);
             }
             if (kbFiles.length > 0) await parseKbFiles();
@@ -1014,24 +1022,34 @@ const API = window.location.origin;
                 document.getElementById('dataSourceBadge').style.display = 'none';
             }
 
-            // 步骤4：保存到服务器
+            // 步骤4：保存三档方案到服务器
             try {
-                await fetch(API + '/api/solutions', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer '+authToken },
-                    body: JSON.stringify({
-                        title: sceneData.name,
-                        scene: currentScene,
-                        budget: budget,
-                        device_count: devices,
-                        communication: document.getElementById('communication').value,
-                        cloud_platform: document.getElementById('cloudPlatform').value,
-                        description: desc,
-                        content: currentSolution,
-                        kb_file_ids: kbFiles.map(f => f.name),
-                        version: 'complex'
+                const savePayload = {
+                    scene: currentScene,
+                    budget: budget,
+                    device_count: devices,
+                    communication: document.getElementById('communication').value,
+                    cloud_platform: document.getElementById('cloudPlatform').value,
+                    description: desc,
+                    kb_file_ids: kbFiles.filter(f => f.id).map(f => f.id)
+                };
+                await Promise.all([
+                    fetch(API + '/api/solutions', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer '+authToken },
+                        body: JSON.stringify({ ...savePayload, title: sceneData.name + '（简单方案）', content: simple, version: 'simple' })
+                    }),
+                    fetch(API + '/api/solutions', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer '+authToken },
+                        body: JSON.stringify({ ...savePayload, title: sceneData.name + '（中等方案）', content: medium, version: 'medium' })
+                    }),
+                    fetch(API + '/api/solutions', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer '+authToken },
+                        body: JSON.stringify({ ...savePayload, title: sceneData.name, content: complex, version: 'complex' })
                     })
-                });
+                ]);
             } catch {}
 
             btn.classList.remove('loading');
@@ -1051,7 +1069,7 @@ const API = window.location.origin;
             if (sceneDataCache[cacheKey]) return sceneDataCache[cacheKey];
 
             const kbIds = kbFiles.filter(f => f.id).map(f => f.id);
-            const kbContents = kbFiles.filter(f => f.content && f.content.length > 100).map(f => ({ name: f.name, tags: f.tags || [], contentLen: f.content.length }));
+            const kbContents = kbFiles.filter(f => f.content && f.content.length > 100).map(f => ({ name: f.name, tags: f.tags || [], content: f.content.substring(0, 2000) }));
             try {
                 const r = await fetch(API + '/api/generate/scene-data', {
                     method: 'POST',
